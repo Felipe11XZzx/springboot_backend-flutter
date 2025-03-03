@@ -1,37 +1,51 @@
-import '../models/user.dart';
-import '../services/user_service.dart';
+/*import 'package:inicio_sesion/models/user.dart';
 
-class UserLogic {
-  final UserService _userService = UserService();
+class Logica  {
+  static final List<User> listaRegistro = [
+    User(nombre: "Rolando", contrasena: "Rolando", edad: 36, imagen: "", lugarNacimiento: "Zaragoza", administrador: false,),
+    User(nombre: "admin", contrasena: "admin", edad: 50, imagen: "", lugarNacimiento: "Zaragoza", administrador: true),
+  ];
 
-  Future<List<User>> listarUsuarios() async {
-    return await _userService.getAllUsers();
+  
+  static List<User> listarUsuarios() {
+    return listaRegistro.where((user) => !user.administrador).toList();
   }
 
-  Future<void> aniadirUser(User user) async {
-    await _userService.createUser(user);
+  get lista {
+    return listaRegistro;
   }
 
-  Future<void> updateUser(User user) async {
-    await _userService.updateUser(user.id, user);
+  static void aniadirUser (User user) {
+    listaRegistro.add(user);
   }
 
-  Future<User?> findUser(String nombre) async {
+  static void updateUser (User user) {
+    int position = listaRegistro.indexWhere((u) => u.nombre == user.nombre);
+    if (position != -1) {
+      listaRegistro[position] = user;
+  }
+  }
+
+
+  static User? findUser(String nombre) {
     try {
-      final users = await _userService.getAllUsers();
-      return users.firstWhere((u) => u.nombre == nombre);
+      return listaRegistro.firstWhere((u) => u.nombre == nombre);
+        
     } catch (e) {
       return null;
     }
   }
 
-  Future<void> deleteUser(int id) async {
-    await _userService.deleteUser(id);
+  static void deleteUser (String nombre) {
+    listaRegistro.removeWhere((u) => u.nombre == nombre);
   }
 
-  Future<String?> validarUser(String nombre, String password) async {
+  static String? validarUser (String user1, String password) {
     try {
-      final user = await _userService.login(nombre, password);
+      User user = listaRegistro.firstWhere(
+        (u) => u.nombre == user1 && u.contrasena == password
+      );
+
       if (user.bloqueado) {
         return "Usuario bloqueado, por favor contacta con el administrador";
       }
@@ -40,4 +54,6 @@ class UserLogic {
       return "Datos introducidos no son correctos";
     }
   }
+
 }
+*/

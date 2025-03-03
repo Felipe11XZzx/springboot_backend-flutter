@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:inicio_sesion/models/user.dart';
-import 'package:inicio_sesion/logica/userlogic.dart';
+import 'package:inicio_sesion/repositories/user_repository.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:numberpicker/numberpicker.dart';
@@ -26,44 +26,63 @@ class _MyRegisterPageState extends State<MyRegisterPage> {
   File? _image;
   bool _acceptTerms = false;
   final ImagePicker _picker = ImagePicker();
+  final UserRepository _userRepository = UserRepository();
 
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
-        _image = kIsWeb ? null : File(pickedFile.path);
-        //_image = File(pickedFile.path);
+        _image = File(pickedFile.path);
       });
       print("Imagen seleccionada: ${pickedFile.path}");
-      
     }
   }
 
-  void _registerUser() {
+  Future<void> _registerUser() async {
     if (_formKey.currentState!.validate() && _acceptTerms) {
-      Logica.aniadirUser(User(
-          id: ,
+      try {
+        final newUser = User(
           nombre: _userController.text,
           contrasena: _passwordController.text,
           edad: _selectedAge,
           imagen: _image?.path ?? '',
           bloqueado: false,
-          lugarNacimiento: _birthplaceController.text));
-      SnaksBar.showSnackBar(context, "Usuario registrado exitosamente",
-            color: Constants.successColor);
-      Navigator.pop(context);
+          lugarNacimiento: _birthplaceController.text,
+        );
+
+        await _userRepository.createUser(newUser);
+        
+        if (mounted) {
+          SnaksBar.showSnackBar(
+            context, 
+            "Usuario registrado exitosamente",
+            color: Constants.successColor
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          SnaksBar.showSnackBar(
+            context,
+            "Error al registrar usuario: ${e.toString()}",
+            color: Constants.errorColor
+          );
+        }
+      }
     } else if (_formKey.currentState!.validate() && !_acceptTerms) {
       showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-                title: Text(''),
-                content: Text('Debes aceptar los términos y condiciones'),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text('Volver')),
-                ],
-              ));
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Términos y Condiciones'),
+          content: Text('Debes aceptar los términos y condiciones'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Volver')
+            ),
+          ],
+        )
+      );
     }
   }
 
@@ -106,9 +125,10 @@ class _MyRegisterPageState extends State<MyRegisterPage> {
                 onTap: _pickImage,
                 child: CircleAvatar(
                   radius: 40,
-                  backgroundImage: _image != null ? FileImage(_image!) : null,
-                  child:
-                      _image == null ? Icon(Icons.camera_alt, size: 40) : null,
+                  backgroundImage: _image != null && !kIsWeb 
+                    ? FileImage(_image!) 
+                    : null,
+                  child: _image == null ? Icon(Icons.camera_alt, size: 40) : null,
                 ),
               ),
               SizedBox(height: 10),

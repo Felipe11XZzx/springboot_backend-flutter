@@ -1,33 +1,74 @@
 import 'package:flutter/material.dart';
-import 'package:inicio_sesion/logica/userlogic.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io';
 import '../models/user.dart';
 import '../commons/images.dart';
 import '../commons/validations.dart';
 import '../commons/constants.dart';
 import '../widgets/formusuario.dart';
 import '../commons/dialogs.dart';
-import '../providers/UserProvider.dart';
+import '../repositories/UserRepository.dart';
 
 class AdministerManagementPage extends StatefulWidget {
   final User currentAdmin;
   const AdministerManagementPage({super.key, required this.currentAdmin});
 
   @override
-  _AdministerManagementPageState createState() =>
-      _AdministerManagementPageState();
+  _AdministerManagementPageState createState() => _AdministerManagementPageState();
 }
 
 class _AdministerManagementPageState extends State<AdministerManagementPage> {
-  void _bloquearUsuario(BuildContext context, User usuario, int index) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Función de bloqueo aún no implementada")),
-    );
+  final UserRepository _userRepository = UserRepository();
+  List<User> users = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
   }
 
-  void _editarUsuario(BuildContext context, User usuario, int index) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Función de edición aún no implementada")),
-    );
+  Future<void> _loadUsers() async {
+    try {
+      final loadedUsers = await _userRepository.listarUsuarios();
+      setState(() {
+        users = loadedUsers;
+      });
+    } catch (e) {
+      if (mounted) {
+        Dialogs.showSnackBar(context, "Error al cargar usuarios: $e", color: Constants.errorColor);
+      }
+    }
+  }
+
+  Future<void> _bloquearUsuario(BuildContext context, User usuario, int index) async {
+    try {
+      final updatedUser = User(
+        id: usuario.id,
+        nombre: usuario.nombre,
+        contrasena: usuario.contrasena,
+        edad: usuario.edad,
+        trato: usuario.trato,
+        imagen: usuario.imagen,
+        lugarNacimiento: usuario.lugarNacimiento,
+        administrador: usuario.administrador,
+        bloqueado: !usuario.bloqueado,
+      );
+
+      await _userRepository.actualizarUsuario(usuario.id.toString(), updatedUser);
+      await _loadUsers();
+      
+      if (mounted) {
+        Dialogs.showSnackBar(
+          context, 
+          usuario.bloqueado ? "Usuario desbloqueado" : "Usuario bloqueado",
+          color: Constants.successColor
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Dialogs.showSnackBar(context, "Error al cambiar estado: $e", color: Constants.errorColor);
+      }
+    }
   }
 
   void _createUser() {
@@ -53,66 +94,64 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
                 selectedTratement: selectedTreatment,
                 imagenPath: imagePath,
                 isAdmin: isAdmin,
-                onTratementChanged: (value) =>
-                    setDialogState(() => selectedTreatment = value!),
-                onImageChanged: (value) =>
-                    setDialogState(() => imagePath = value),
-                onAdminChanged: (value) =>
-                    setDialogState(() => isAdmin = value!),
+                onTratementChanged: (value) => setDialogState(() => selectedTreatment = value!),
+                onImageChanged: (value) => setDialogState(() => imagePath = value),
+                onAdminChanged: (value) => setDialogState(() => isAdmin = value!),
                 onModifiedUser: (user) {},
               ),
             ),
             actions: [
-              ElevatedButton(
+              TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
                 child: const Text("Cancelar"),
               ),
               ElevatedButton(
                 onPressed: () async {
                   // Validación de campos
-                  String? userError =
-                      Validations.validateRequired(userController.text);
-                  String? passwordError =
-                      Validations.validatePassword(passwordController.text);
-                  String? ageError =
-                      Validations.validateAge(ageController.text);
+                  String? userError = Validations.validateRequired(userController.text);
+                  String? passwordError = Validations.validatePassword(passwordController.text);
+                  String? ageError = Validations.validateAge(ageController.text);
 
                   if (userError != null) {
-                    Dialogs.showSnackBar(context, userError,
-                        color: Constants.errorColor);
+                    Dialogs.showSnackBar(context, userError, color: Constants.errorColor);
                     return;
                   }
                   if (passwordError != null) {
-                    Dialogs.showSnackBar(context, passwordError,
-                        color: Constants.errorColor);
+                    Dialogs.showSnackBar(context, passwordError, color: Constants.errorColor);
                     return;
                   }
                   if (ageError != null) {
-                    Dialogs.showSnackBar(context, ageError,
-                        color: Constants.errorColor);
+                    Dialogs.showSnackBar(context, ageError, color: Constants.errorColor);
                     return;
                   }
 
-                  await Dialogs.showLoadingSpinner(context);
+                  try {
+                    await Dialogs.showLoadingSpinner(context);
 
-                  User newUser = User(
-                    id: 0,
-                    imagen: imagePath ?? Images.getDefaultImage(isAdmin),
-                    edad: int.parse(ageController.text),
-                    nombre: userController.text,
-                    contrasena: passwordController.text,
-                    contrasena2: passwordController.text,
-                    bloqueado: false,
-                    lugarNacimiento: "Madrid",
-                    administrador: isAdmin,
-                  );
-                  var userProvider;
-                  await userProvider.anadirUsuario(newUser);
+                    final newUser = User(
+                      nombre: userController.text,
+                      contrasena: passwordController.text,
+                      contrasena2: passwordController.text,
+                      edad: int.parse(ageController.text),
+                      trato: selectedTreatment,
+                      imagen: imagePath ?? Images.getDefaultImage(isAdmin),
+                      lugarNacimiento: "Madrid",
+                      administrador: isAdmin,
+                      bloqueado: false,
+                    );
 
-                  Navigator.pop(dialogContext);
-                  setState(() {});
-                  Dialogs.showSnackBar(context, "Usuario creado correctamente",
-                      color: Constants.successColor);
+                    await _userRepository.anadirUsuario(newUser);
+                    await _loadUsers();
+                    
+                    Navigator.pop(dialogContext);
+                    if (mounted) {
+                      Dialogs.showSnackBar(context, "Usuario creado correctamente", color: Constants.successColor);
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      Dialogs.showSnackBar(context, "Error al crear usuario: $e", color: Constants.errorColor);
+                    }
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blueAccent,
@@ -128,13 +167,10 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
   }
 
   void _editUser(User user) {
-    TextEditingController userController =
-        TextEditingController(text: user.nombre);
-    TextEditingController passwordController =
-        TextEditingController(text: user.contrasena);
-    TextEditingController ageController =
-        TextEditingController(text: user.edad.toString());
-    String selectedTreatment = user.trato;
+    TextEditingController userController = TextEditingController(text: user.nombre);
+    TextEditingController passwordController = TextEditingController(text: user.contrasena);
+    TextEditingController ageController = TextEditingController(text: user.edad.toString());
+    String selectedTreatment = user.trato ?? "Sr.";
     String? imagePath = user.imagen;
     bool isAdmin = user.administrador;
 
@@ -153,54 +189,64 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
                 selectedTratement: selectedTreatment,
                 imagenPath: imagePath,
                 isAdmin: isAdmin,
-                onTratementChanged: (value) =>
-                    setDialogState(() => selectedTreatment = value!),
-                onImageChanged: (value) =>
-                    setDialogState(() => imagePath = value),
-                onAdminChanged: (value) =>
-                    setDialogState(() => isAdmin = value!),
+                onTratementChanged: (value) => setDialogState(() => selectedTreatment = value!),
+                onImageChanged: (value) => setDialogState(() => imagePath = value),
+                onAdminChanged: (value) => setDialogState(() => isAdmin = value!),
                 onModifiedUser: (user) {},
               ),
             ),
             actions: [
-              ElevatedButton(
+              TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
                 child: const Text("Cancelar"),
               ),
               ElevatedButton(
                 onPressed: () async {
-                  String? passwordError =
-                      Validations.validatePassword(passwordController.text);
-                  String? ageError =
-                      Validations.validateAge(ageController.text);
+                  String? passwordError = Validations.validatePassword(passwordController.text);
+                  String? ageError = Validations.validateAge(ageController.text);
 
                   if (passwordError != null) {
-                    Dialogs.showSnackBar(context, passwordError,
-                        color: Constants.errorColor);
+                    Dialogs.showSnackBar(context, passwordError, color: Constants.errorColor);
                     return;
                   }
                   if (ageError != null) {
-                    Dialogs.showSnackBar(context, ageError,
-                        color: Constants.errorColor);
+                    Dialogs.showSnackBar(context, ageError, color: Constants.errorColor);
                     return;
                   }
 
-                  await Dialogs.showLoadingSpinner(context);
+                  try {
+                    await Dialogs.showLoadingSpinner(context);
 
-                  user.trato = selectedTreatment;
-                  user.pass = passwordController.text;
-                  user.edad = int.parse(ageController.text);
-                  user.imagen = imagePath ?? '';
-                  user.administrador = isAdmin;
-                  Logica.updateUser(user);
+                    final updatedUser = User(
+                      id: user.id,
+                      nombre: user.nombre,
+                      contrasena: passwordController.text,
+                      edad: int.parse(ageController.text),
+                      trato: selectedTreatment,
+                      imagen: imagePath,
+                      lugarNacimiento: user.lugarNacimiento,
+                      administrador: isAdmin,
+                      bloqueado: user.bloqueado,
+                    );
 
-                  Navigator.pop(dialogContext);
-                  setState(() {});
-                  Dialogs.showSnackBar(
-                      context, "Usuario actualizado correctamente",
-                      color: Constants.successColor);
+                    await _userRepository.actualizarUsuario(user.id.toString(), updatedUser);
+                    await _loadUsers();
+
+                    Navigator.pop(dialogContext);
+                    if (mounted) {
+                      Dialogs.showSnackBar(context, "Usuario actualizado correctamente", color: Constants.successColor);
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      Dialogs.showSnackBar(context, "Error al actualizar usuario: $e", color: Constants.errorColor);
+                    }
+                  }
                 },
-                child: const Text("Guardar"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text("Actualizar"),
               ),
             ],
           );
@@ -211,103 +257,50 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    final userProvider = Provider.of<UserProvider>(context);
-
-    List<User> listUsers = userProvider.listarUsuarios
-        .where((u) =>
-            u.nombre != "admin" && u.nombre != widget.currentAdmin.nombre)
-        .toList();
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Gestión de Usuarios"),
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back),
-        ),
+        title: const Text('Gestión de Usuarios'),
+        backgroundColor: Colors.blueAccent,
+        foregroundColor: Colors.white,
       ),
       body: ListView.builder(
-        padding: const EdgeInsets.only(bottom: 80),
-        itemCount: listUsers.length,
+        itemCount: users.length,
         itemBuilder: (context, index) {
-          User user = listUsers[index];
-          return Card(
-            margin: const EdgeInsets.all(8),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundImage: Images.getImageProvider(user.imagen),
-                backgroundColor: Colors.grey[200],
-              ),
-              title: Row(
-                children: [
-                  userProvider.users.isEmpty
-                      ? const Center(
-                          child:
-                              const Text('No se ha encontrado ningun usuario'))
-                      : Text(user.nombre),
-                  if (user.administrador) const SizedBox(width: 4),
-                  if (user.administrador) Constants.adminBadge,
-                ],
-              ),
-              subtitle: Text("${user.edad} años - ${user.lugarNacimiento}"),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blue),
-                    onPressed: () => _editarUsuario(
-                        context, userProvider.users[index], index),
+          final user = users[index];
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundImage: user.imagen != null && user.imagen!.isNotEmpty && !kIsWeb
+                  ? FileImage(File(user.imagen!))
+                  : null,
+              child: user.imagen == null || user.imagen!.isEmpty
+                  ? const Icon(Icons.person)
+                  : null,
+            ),
+            title: Text(user.nombre),
+            subtitle: Text('Edad: ${user.edad}'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    user.bloqueado ? Icons.lock : Icons.lock_open,
+                    color: user.bloqueado ? Colors.red : Colors.green,
                   ),
-                  IconButton(
-                    icon: Icon(
-                      user.bloqueado ? Icons.lock : Icons.lock_open,
-                      color: user.bloqueado ? Colors.red : Colors.green,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        user.bloqueado = !user.bloqueado;
-                        userProvider.actualizarUsuario(user.id, user);
-                      });
-                      Dialogs.showSnackBar(
-                          context,
-                          user.bloqueado
-                              ? "Usuario bloqueado"
-                              : "Usuario desbloqueado",
-                          color: user.bloqueado
-                              ? Constants.errorColor
-                              : Constants.successColor);
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () async {
-                      bool? confirm = await Dialogs.showConfirmDialog(
-                          context: context,
-                          title: "Confirmar eliminación",
-                          content: "¿Está seguro de eliminar a ${user.nombre}?",
-                          style: Text(''));
-
-                      if (confirm == true) {
-                        await Dialogs.showLoadingSpinner(context);
-                        userProvider.deleteUser(user.id);
-                        setState(() {});
-                        Dialogs.showSnackBar(
-                            context, "Usuario eliminado correctamente",
-                            color: Constants.successColor);
-                      }
-                    },
-                  ),
-                ],
-              ),
+                  onPressed: () => _bloquearUsuario(context, user, index),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: () => _editUser(user),
+                ),
+              ],
             ),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _createUser,
-        backgroundColor: Constants.primaryColor,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+        backgroundColor: Colors.blueAccent,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
