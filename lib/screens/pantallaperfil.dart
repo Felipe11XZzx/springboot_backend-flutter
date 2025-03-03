@@ -1,28 +1,48 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:inicio_sesion/models/user.dart';
+//import 'package:inicio_sesion/commons/images.dart';
 
 class ProfilePage extends StatelessWidget {
-  final User usuarioActual; // Usuario conectado
+  final User usuarioActual;
 
   const ProfilePage({super.key, required this.usuarioActual});
 
+  ImageProvider _getImageProvider() {
+    if (usuarioActual.imagen == null || usuarioActual.imagen!.isEmpty) {
+      return const AssetImage('assets/images/profile_default.jpg');
+    }
+
+    if (kIsWeb) {
+      if (usuarioActual.imagen!.startsWith('http') ||
+          usuarioActual.imagen!.startsWith('blob:')) {
+        return NetworkImage(usuarioActual.imagen!);
+      }
+      return const AssetImage('assets/images/profile_default.jpg');
+    } else {
+      try {
+        return FileImage(File(usuarioActual.imagen!));
+      } catch (e) {
+        return const AssetImage('assets/images/profile_default.jpg');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    print("Ruta de la imagen: ${usuarioActual.imagen}");
-
     return Scaffold(
       appBar: AppBar(
-        title: Text('Mi Perfil', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text('Mi Perfil',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.blueAccent,
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
             Container(
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
                 color: Colors.blueAccent,
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(30),
@@ -33,45 +53,55 @@ class ProfilePage extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundImage: usuarioActual.imagen.isNotEmpty
-                        ? (usuarioActual.imagen.startsWith("blob:")
-                            ? NetworkImage(usuarioActual.imagen)
-                            : FileImage(File(usuarioActual.imagen))
-                        ) as ImageProvider
-                      : AssetImage('assets/images/profile_default.jpg'),
+                    backgroundImage: _getImageProvider(),
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Text(
                     usuarioActual.nombre,
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                   Text(
-                    usuarioActual.trato,
-                    style: TextStyle(fontSize: 16, color: Colors.white70),
+                    usuarioActual.trato ?? 'Sr.',
+                    style: const TextStyle(fontSize: 16, color: Colors.white70),
                   ),
                 ],
               ),
             ),
             Padding(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
                   Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15)),
                     elevation: 4,
                     child: Column(
                       children: [
-                        _buildProfileTile(Icons.person, "Nombre", usuarioActual.nombre),
-                        _buildProfileTile(Icons.lock, "Contraseña", "********"),
-                        _buildProfileTile(Icons.cake, "Edad", usuarioActual.edad.toString()),
-                        _buildProfileTile(Icons.location_on, "Lugar de Nacimiento", usuarioActual.lugarNacimiento),
                         _buildProfileTile(
-                          usuarioActual.administrador ? Icons.security : Icons.person_outline,
+                            Icons.person, "Nombre", usuarioActual.nombre),
+                        _buildProfileTile(Icons.lock, "Contraseña", "********"),
+                        _buildProfileTile(
+                            Icons.cake, "Edad", usuarioActual.edad.toString()),
+                        _buildProfileTile(
+                            Icons.location_on,
+                            "Lugar de Nacimiento",
+                            usuarioActual.lugarNacimiento),
+                        _buildProfileTile(
+                          usuarioActual.administrador
+                              ? Icons.security
+                              : Icons.person_outline,
                           "Rol",
-                          usuarioActual.administrador ? "Administrador" : "Usuario",
+                          usuarioActual.administrador
+                              ? "Administrador"
+                              : "Usuario",
                         ),
                         _buildProfileTile(
-                          usuarioActual.bloqueado ? Icons.block : Icons.check_circle,
+                          usuarioActual.bloqueado
+                              ? Icons.block
+                              : Icons.check_circle,
                           "Estado",
                           usuarioActual.bloqueado ? "Bloqueado" : "Activo",
                         ),
@@ -90,8 +120,8 @@ class ProfilePage extends StatelessWidget {
   Widget _buildProfileTile(IconData icon, String title, String value) {
     return ListTile(
       leading: Icon(icon, color: Colors.blueAccent),
-      title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(value, style: TextStyle(fontSize: 16)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(value, style: const TextStyle(fontSize: 16)),
     );
   }
 }
