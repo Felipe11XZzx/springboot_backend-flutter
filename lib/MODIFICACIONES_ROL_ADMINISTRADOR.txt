@@ -1,0 +1,28 @@
+ Cambios en rama feature/administrador
+
+ !NOTA IMPORTANTE¡ : Hasta que no conectemos con el servicio del usuario ("API"), no podremos ver la creación de usuarios con rol ni las demás funcionalidades de esto rol.
+ Pantalla Gestión Usuarios (Rol Administrador).
+
+ implementaciones a futuro: Uso del Logger como en la pantalla principal ("Lo pidio Javi"). 
+
+ Archivos nuevos:
+- pantallaadministador.dart -> Pantalla del administrador donde le permite realizar diferentes funcionalidades de la app.
+- dialogs.dart -> Para mostrar mensajes y confirmaciones
+- producto.dart -> Para manejar productos (en proceso)
+- pantallagestionproductos.dart -> Pantalla para gestionar productos (en proceso)
+- pantallagestionusuarios.dart -> Pantalla para gestionar usuarios (lista para conectar con el servicio)
+- formusuario.dart -> Formulario para crear/editar usuarios
+- panatallagestionpedidos.dart -> Pantalla para cambiar el estado del pedido realizado por el cliente.
+- pantallagestionproductos.dart -> Pantalla para modificar y crear nuevos productos de la tienda.
+
+ Cambios principales:
+- Agregado login de admin (usuario: admin, contraseña: admin)
+- Nueva pantalla de administrador con menú
+- Gestión de usuarios con validaciones
+- Traducción de variables al inglés
+- Limpieza de imports que no se usan
+
+ Pendiente:
+- Crear servicio de usuarios, productos y pedidos.
+- Implementar gestión de productos.
+- Creación de productos estandar (Aires Acondicionados o Calderas).
