@@ -1,60 +1,37 @@
 class User {
-  final int id;
+  final int? id;
   final String nombre;
   final String contrasena;
-  final String contrasena2;
-  final String imagen;
+  final String? contrasena2;
+  final String? imagen;
   final int edad;
-  final String trato;
+  final String? trato;
   final String lugarNacimiento;
   final bool administrador;
-  late final bool bloqueado;
+  final bool bloqueado;
 
-  User(
-      {required this.id,
-      required this.nombre,
-      required this.contrasena,
-      required this.contrasena2,
-      required this.edad,
-      required this.trato,
-      required this.imagen,
-      required this.lugarNacimiento,
-      required this.administrador,
-      required this.bloqueado});
+  User({
+    this.id,
+    required this.nombre,
+    required this.contrasena,
+    this.contrasena2,
+    this.imagen = "",
+    required this.edad,
+    this.trato = "Sr.",
+    required this.lugarNacimiento,
+    this.administrador = false,
+    this.bloqueado = false,
+  });
 
-  int getId() {
-    return id;
-  }
+  int? getId() => id;
+  String getNombre() => nombre;
+  String getPass() => contrasena;
+  String? getImage() => imagen;
+  int getEdad() => edad;
+  String getLugarNacimiento() => lugarNacimiento;
+  String? getTrato() => trato;
+  bool getAdministrador() => administrador;
 
-  String getNombre() {
-    return nombre;
-  }
-
-  String getPass() {
-    return contrasena;
-  }
-
-  String getImage() {
-    return imagen;
-  }
-
-  int getEdad() {
-    return edad;
-  }
-
-  String getLugarNacimiento() {
-    return lugarNacimiento;
-  }
-
-  String getTrato() {
-    return trato;
-  }
-
-  bool getAdministrador() {
-    return administrador;
-  }
-
-// IMPLEMENTACION DE CASTEO DE JSON A OBJETO USER
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'],
@@ -65,26 +42,28 @@ class User {
       trato: json['trato'],
       imagen: json['imagen'],
       lugarNacimiento: json['lugarNacimiento'],
-      administrador: json['administrador'],
-      bloqueado: json['bloqueado'],
+      administrador: json['administrador'] ?? false,
+      bloqueado: json['bloqueado'] ?? false,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      "id": id,
+      if (id != null) "id": id,
       "nombre": nombre,
       "contrasena": contrasena,
-      "contrasena2": contrasena2,
-      "imagen": imagen,
+      if (contrasena2 != null) "contrasena2": contrasena2,
+      if (imagen != null) "imagen": imagen,
       "edad": edad,
+      if (trato != null) "trato": trato,
       "lugarNacimiento": lugarNacimiento,
       "administrador": administrador,
+      "bloqueado": bloqueado,
     };
   }
 
   @override
   String toString() {
-    return 'User(nombre: $nombre, contrasena: $contrasena, contrasena2: $contrasena2, $trato trato: )';
+    return 'User(id: $id, nombre: $nombre, edad: $edad, trato: $trato)';
   }
 }

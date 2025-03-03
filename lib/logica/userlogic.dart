@@ -1,59 +1,43 @@
-/*import 'package:inicio_sesion/models/user.dart';
+import '../models/user.dart';
+import '../services/user_service.dart';
 
-class Logica  {
-  static final List<User> listaRegistro = [
-    User(nombre: "Rolando", contrasena: "Rolando", edad: 36, imagen: "", lugarNacimiento: "Zaragoza", administrador: false,),
-    User(nombre: "admin", contrasena: "admin", edad: 50, imagen: "", lugarNacimiento: "Zaragoza", administrador: true),
-  ];
+class UserLogic {
+  final UserService _userService = UserService();
 
-  
-  static List<User> listarUsuarios() {
-    return listaRegistro.where((user) => !user.administrador).toList();
+  Future<List<User>> listarUsuarios() async {
+    return await _userService.getAllUsers();
   }
 
-  get lista {
-    return listaRegistro;
+  Future<void> aniadirUser(User user) async {
+    await _userService.createUser(user);
   }
 
-  static void aniadirUser (User user) {
-    listaRegistro.add(user);
+  Future<void> updateUser(User user) async {
+    await _userService.updateUser(user.id, user);
   }
 
-  static void updateUser (User user) {
-    int position = listaRegistro.indexWhere((u) => u.nombre == user.nombre);
-    if (position != -1) {
-      listaRegistro[position] = user;
-    }
-  }
-  
-
-  static User? findUser(String nombre) {
+  Future<User?> findUser(String nombre) async {
     try {
-      return listaRegistro.firstWhere((u) => u.nombre == nombre);
-        
+      final users = await _userService.getAllUsers();
+      return users.firstWhere((u) => u.nombre == nombre);
     } catch (e) {
       return null;
     }
   }
 
-  static void deleteUser (String nombre) {
-    listaRegistro.removeWhere((u) => u.nombre == nombre);
+  Future<void> deleteUser(int id) async {
+    await _userService.deleteUser(id);
   }
 
-  static String? validarUser (String user1, String password) {
+  Future<String?> validarUser(String nombre, String password) async {
     try {
-      User user = listaRegistro.firstWhere(
-        (u) => u.nombre == user1 && u.contrasena == password
-      );
-
+      final user = await _userService.login(nombre, password);
       if (user.bloqueado) {
         return "Usuario bloqueado, por favor contacta con el administrador";
       }
-      return null;     
+      return null;
     } catch (e) {
       return "Datos introducidos no son correctos";
     }
   }
-
 }
-*/

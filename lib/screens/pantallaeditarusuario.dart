@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:inicio_sesion/models/user.dart';
-import 'package:inicio_sesion/logica/userlogic.dart';
+import 'package:inicio_sesion/repositories/UserRepository.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:numberpicker/numberpicker.dart';
 
 class EditionUserPage extends StatefulWidget {
   final User usuario;
-  const EditionUserPage ({super.key, required this.usuario});
+  const EditionUserPage({super.key, required this.usuario});
   @override
   State<EditionUserPage> createState() => _EditionUserPageState();
 }
 
 class _EditionUserPageState extends State<EditionUserPage> {
-  
   final _formKey = GlobalKey<FormState>();
+  final _userRepository = UserRepository();
   late TextEditingController _userController;
   late TextEditingController _passwordController;
   late TextEditingController _confirmPasswordController;
   String birthplace = "";
   int _selectedAge = 20;
-  String _selectedTitle= 'Sr.';
+  String _selectedTitle = 'Sr.';
   File? _image;
   final ImagePicker _picker = ImagePicker();
 
@@ -28,16 +28,14 @@ class _EditionUserPageState extends State<EditionUserPage> {
   void initState() {
     super.initState();
     birthplace = widget.usuario.lugarNacimiento;
-    _selectedAge= widget.usuario.edad;
-    _userController= TextEditingController(text:widget.usuario.nombre);
-    _passwordController= TextEditingController(text: widget.usuario.contrasena);
+    _selectedAge = widget.usuario.edad;
+    _userController = TextEditingController(text: widget.usuario.nombre);
+    _passwordController = TextEditingController(text: widget.usuario.contrasena);
     _confirmPasswordController = TextEditingController(text: widget.usuario.contrasena);
-   // _selectedTitle= widget.usuario.trato;
-    if (widget.usuario.imagen.isNotEmpty){
-      _image = File(widget.usuario.imagen);
+    _selectedTitle = widget.usuario.trato ?? 'Sr.';
+    if (widget.usuario.imagen?.isNotEmpty ?? false) {
+      _image = File(widget.usuario.imagen!);
     }
-      
-
   }
 
   Future<void> _pickImage() async {
@@ -49,31 +47,43 @@ class _EditionUserPageState extends State<EditionUserPage> {
     }
   }
 
-  void _updateUser(User user) {
-  if (_formKey.currentState!.validate()) {
-    User updatedUser = User(
-      nombre: user.nombre,
-      contrasena: _passwordController.text.isEmpty ? user.contrasena : _passwordController.text,
-      edad: _selectedAge,      
-      imagen: _image?.path ?? user.imagen, 
-      lugarNacimiento: birthplace,
-    );
-    
-    Logica.updateUser(updatedUser);
+  Future<void> _updateUser(User user) async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        final updatedUser = User(
+          id: user.id,
+          nombre: user.nombre,
+          contrasena: _passwordController.text.isEmpty ? user.contrasena : _passwordController.text,
+          edad: _selectedAge,
+          imagen: _image?.path ?? user.imagen,
+          lugarNacimiento: birthplace,
+          trato: _selectedTitle,
+          administrador: user.administrador,
+          bloqueado: user.bloqueado,
+        );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Datos actualizados')),
-    );
+        await _userRepository.actualizarUsuario(user.id.toString(), updatedUser);
 
-    Navigator.pop(context, updatedUser);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Datos actualizados')),
+          );
+          Navigator.pop(context, updatedUser);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al actualizar: $e')),
+          );
+        }
+      }
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Actualizar datos'),
+      title: const Text('Actualizar datos'),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -91,58 +101,60 @@ class _EditionUserPageState extends State<EditionUserPage> {
                         groupValue: _selectedTitle,
                         onChanged: (value) => setState(() => _selectedTitle = value!),
                       ),
-                      Text('Sr.'),
+                      const Text('Sr.'),
                       Radio<String>(
                         value: 'Sra.',
                         groupValue: _selectedTitle,
                         onChanged: (value) => setState(() => _selectedTitle = value!),
                       ),
-                      Text('Sra.'),
+                      const Text('Sra.'),
                     ],
                   ),
                 ],
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               GestureDetector(
                 onTap: _pickImage,
                 child: CircleAvatar(
                   radius: 40,
                   backgroundImage: _image != null ? FileImage(_image!) : null,
-                  child: _image == null ? Icon(Icons.camera_alt, size: 40) : null,
+                  child: _image == null ? const Icon(Icons.camera_alt, size: 40) : null,
                 ),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               TextFormField(
                 controller: _userController,
                 readOnly: true,
-                decoration: InputDecoration(labelText: 'Usuario'),
+                decoration: const InputDecoration(labelText: 'Usuario'),
                 validator: (value) => value!.isEmpty ? 'Ingrese un usuario' : null,
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
-                decoration: InputDecoration(labelText: 'Contraseña'),
-                validator: (value) => value!.length < 6 ? 'Mínimo 6 caracteres' : null,
+                decoration: const InputDecoration(labelText: 'Contraseña'),
+                validator: (value) => value!.isNotEmpty && value.length < 6 ? 'Mínimo 6 caracteres' : null,
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               TextFormField(
                 controller: _confirmPasswordController,
                 obscureText: true,
-                decoration: InputDecoration(labelText: 'Repite Contraseña'),
-                validator: (value) => value != _passwordController.text ? 'Las contraseñas no coinciden' : null,
+                decoration: const InputDecoration(labelText: 'Repite Contraseña'),
+                validator: (value) => _passwordController.text.isNotEmpty && value != _passwordController.text 
+                  ? 'Las contraseñas no coinciden' 
+                  : null,
               ),
-              SizedBox(height: 10),
-              Text('Edad', style: TextStyle(fontSize: 18),),
+              const SizedBox(height: 10),
+              const Text('Edad', style: TextStyle(fontSize: 18)),
               NumberPicker(
                 value: _selectedAge,
                 minValue: 18,
                 maxValue: 60,
                 onChanged: (value) => setState(() => _selectedAge = value),
-                textStyle: TextStyle(fontSize: 10),
-                selectedTextStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                textStyle: const TextStyle(fontSize: 10),
+                selectedTextStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
             ],
           ),
         ),
@@ -150,16 +162,16 @@ class _EditionUserPageState extends State<EditionUserPage> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('Cancelar')
+          child: const Text('Cancelar')
         ),
         ElevatedButton(
           onPressed: () => _updateUser(widget.usuario),
           style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Colors.blueAccent,
-                textStyle: const TextStyle(fontSize: 15),
-              ),
-          child: Text('Actulizar')
+            foregroundColor: Colors.white,
+            backgroundColor: Colors.blueAccent,
+            textStyle: const TextStyle(fontSize: 15),
+          ),
+          child: const Text('Actualizar')
         ),
       ],
     );
