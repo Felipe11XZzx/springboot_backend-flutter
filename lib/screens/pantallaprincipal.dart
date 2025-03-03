@@ -3,7 +3,7 @@ import 'package:inicio_sesion/commons/constants.dart';
 import 'package:inicio_sesion/commons/custombutton.dart';
 import 'package:inicio_sesion/screens/pantallaadministrador.dart';
 import 'package:inicio_sesion/screens/pantallaregistro.dart';
-import 'package:inicio_sesion/logica/userlogic.dart';
+import 'package:inicio_sesion/repositories/user_repository.dart';
 import 'package:inicio_sesion/screens/pantallainiciocliente.dart';
 import '../models/user.dart';
 import '../commons/snacksbar.dart';
@@ -22,6 +22,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController userController = TextEditingController();
   final TextEditingController passController = TextEditingController();
+  final UserRepository _userRepository = UserRepository();
   bool obscureText = true;
   User? user;
   int selectedIndex = 0;
@@ -53,30 +54,45 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  void startSession() {
+  void startSession() async {
     if (_formKey.currentState!.validate()) {
-      String usuario = userController.text;
-      String contrasena = passController.text;
+      try {
+        final users = await _userRepository.listarUsuarios();
+        final user = users.firstWhere(
+          (u) => u.nombre == userController.text && u.contrasena == passController.text,
+          orElse: () => throw Exception('Usuario o contraseña incorrectos'),
+        );
 
-      String? mensajeError = Logica.validarUser(usuario, contrasena);
-      if (mensajeError != null) {
-        SnaksBar.showSnackBar(context, mensajeError,
-            color: Constants.errorColor);
-        return;
-      }
+        if (user.bloqueado) {
+          if (mounted) {
+            SnaksBar.showSnackBar(
+              context, 
+              "Usuario bloqueado. Contacte al administrador",
+              color: Constants.errorColor
+            );
+          }
+          return;
+        }
 
-      User? user = Logica.findUser(usuario);
-      if (user != null) {
-        if (user.administrador) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => MyAdminPage(usuarioAdmin:  user)),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => MyStartedPage(user: user)),
+        if (mounted) {
+          if (user.administrador) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => MyAdminPage(usuarioAdmin: user)),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => MyStartedPage(user: user)),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          SnaksBar.showSnackBar(
+            context, 
+            e.toString(),
+            color: Constants.errorColor
           );
         }
       }
@@ -100,24 +116,38 @@ class _MyHomePageState extends State<MyHomePage> {
             child: const Text("Cancelar"),
           ),
           ElevatedButton(
-            onPressed: () {
-              String nombre = nombreUsuarioController.text;
-              User? user = Logica.findUser(nombre);
-              String mensaje = (user != null)
-                  ? "La contraseña es: ${user.contrasena}"
-                  : "Usuario no encontrado";
+            onPressed: () async {
+              try {
+                final users = await _userRepository.listarUsuarios();
+                final user = users.firstWhere(
+                  (u) => u.nombre == nombreUsuarioController.text,
+                  orElse: () => throw Exception('Usuario no encontrado'),
+                );
 
-              Navigator.pop(context);
-              SnaksBar.showSnackBar(context, mensaje,
-                  color: user != null
-                      ? Constants.successColor
-                      : Constants.errorColor);
+                Navigator.pop(context);
+                if (mounted) {
+                  SnaksBar.showSnackBar(
+                    context,
+                    "La contraseña es: ${user.contrasena}",
+                    color: Constants.successColor
+                  );
+                }
+              } catch (e) {
+                Navigator.pop(context);
+                if (mounted) {
+                  SnaksBar.showSnackBar(
+                    context,
+                    e.toString(),
+                    color: Constants.errorColor
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Colors.blueAccent,
-                textStyle: const TextStyle(fontSize: 15),
-              ),
+              foregroundColor: Colors.white,
+              backgroundColor: Colors.blueAccent,
+              textStyle: const TextStyle(fontSize: 15),
+            ),
             child: const Text("Enviar"),
           ),
         ],
