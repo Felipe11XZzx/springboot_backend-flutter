@@ -3,9 +3,9 @@ import 'package:inicio_sesion/commons/constants.dart';
 import 'package:inicio_sesion/commons/custombutton.dart';
 import 'package:inicio_sesion/screens/pantallaadministrador.dart';
 import 'package:inicio_sesion/screens/pantallaregistro.dart';
-import 'package:inicio_sesion/repositories/user_repository.dart';
+import 'package:inicio_sesion/repositories/UserRepository.dart';
 import 'package:inicio_sesion/screens/pantallainiciocliente.dart';
-import '../models/user.dart';
+//import '../models/user.dart';
 import '../commons/snacksbar.dart';
 import 'package:logger/logger.dart';
 
@@ -13,7 +13,6 @@ class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
   final String title;
 
-  get user => null;
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
@@ -23,53 +22,37 @@ class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController userController = TextEditingController();
   final TextEditingController passController = TextEditingController();
   final UserRepository _userRepository = UserRepository();
+  final logger = Logger();
   bool obscureText = true;
-  User? user;
-  int selectedIndex = 0;
-  late final List<Widget> pages;
-  var logger = Logger();
+
+  @override
+  void dispose() {
+    userController.dispose();
+    passController.dispose();
+    super.dispose();
+  }
 
   void openRegister() {
     Navigator.push(context,
         MaterialPageRoute(builder: (context) => const MyRegisterPage()));
   }
 
-  void openStarted() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => MyStartedPage(user: user!)),
-    );
-  }
-
-  void onItemTapped(int index) {
-    setState(() {
-      selectedIndex = index;
-    });
-  }
-
-  void openStartedAdmin() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => MyAdminPage(usuarioAdmin: user!)),
-    );
-  }
-
-  void startSession() async {
+  Future<void> startSession() async {
     if (_formKey.currentState!.validate()) {
       try {
         final users = await _userRepository.listarUsuarios();
         final user = users.firstWhere(
-          (u) => u.nombre == userController.text && u.contrasena == passController.text,
+          (u) =>
+              u.nombre == userController.text &&
+              u.contrasena == passController.text,
           orElse: () => throw Exception('Usuario o contraseña incorrectos'),
         );
 
         if (user.bloqueado) {
           if (mounted) {
             SnaksBar.showSnackBar(
-              context, 
-              "Usuario bloqueado. Contacte al administrador",
-              color: Constants.errorColor
-            );
+                context, "Usuario bloqueado. Contacte al administrador",
+                color: Constants.errorColor);
           }
           return;
         }
@@ -78,31 +61,33 @@ class _MyHomePageState extends State<MyHomePage> {
           if (user.administrador) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => MyAdminPage(usuarioAdmin: user)),
+              MaterialPageRoute(
+                  builder: (context) => MyAdminPage(usuarioAdmin: user)),
             );
           } else {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => MyStartedPage(user: user)),
+              MaterialPageRoute(
+                  builder: (context) => MyStartedPage(user: user)),
             );
           }
         }
       } catch (e) {
         if (mounted) {
-          SnaksBar.showSnackBar(
-            context, 
-            e.toString(),
-            color: Constants.errorColor
-          );
+          SnaksBar.showSnackBar(context, e.toString(),
+              color: Constants.errorColor);
         }
+        logger.e('Error en inicio de sesión: $e');
       }
     }
   }
 
-  void olvidasteContrasena() {
-    TextEditingController nombreUsuarioController = TextEditingController();
+  Future<void> olvidasteContrasena() async {
+    final nombreUsuarioController = TextEditingController();
 
-    showDialog(
+    if (!mounted) return;
+
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Recuperar contraseña"),
@@ -127,20 +112,16 @@ class _MyHomePageState extends State<MyHomePage> {
                 Navigator.pop(context);
                 if (mounted) {
                   SnaksBar.showSnackBar(
-                    context,
-                    "La contraseña es: ${user.contrasena}",
-                    color: Constants.successColor
-                  );
+                      context, "La contraseña es: ${user.contrasena}",
+                      color: Constants.successColor);
                 }
               } catch (e) {
                 Navigator.pop(context);
                 if (mounted) {
-                  SnaksBar.showSnackBar(
-                    context,
-                    e.toString(),
-                    color: Constants.errorColor
-                  );
+                  SnaksBar.showSnackBar(context, e.toString(),
+                      color: Constants.errorColor);
                 }
+                logger.e('Error en recuperación de contraseña: $e');
               }
             },
             style: ElevatedButton.styleFrom(
@@ -184,13 +165,13 @@ class _MyHomePageState extends State<MyHomePage> {
                   width: 300,
                   child: TextFormField(
                     controller: userController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Usuario',
                       border: OutlineInputBorder(),
                       errorStyle: TextStyle(fontSize: 10),
                     ),
                     validator: (value) =>
-                        value!.isEmpty ? 'Enter your username' : null,
+                        value!.isEmpty ? 'Ingrese su usuario' : null,
                     onTap: () {
                       setState(() {
                         _formKey.currentState!.reset();
@@ -208,22 +189,19 @@ class _MyHomePageState extends State<MyHomePage> {
                     controller: passController,
                     obscureText: obscureText,
                     decoration: InputDecoration(
-                      labelText: 'Password',
-                      border: OutlineInputBorder(),
-                      errorStyle: TextStyle(fontSize: 10),
+                      labelText: 'Contraseña',
+                      border: const OutlineInputBorder(),
+                      errorStyle: const TextStyle(fontSize: 10),
                       suffixIcon: IconButton(
                         icon: Icon(obscureText
                             ? Icons.visibility_off
                             : Icons.visibility),
-                        onPressed: () {
-                          setState(() {
-                            obscureText = !obscureText;
-                          });
-                        },
+                        onPressed: () =>
+                            setState(() => obscureText = !obscureText),
                       ),
                     ),
                     validator: (value) =>
-                        value!.isEmpty ? 'Enter your password' : null,
+                        value!.isEmpty ? 'Ingrese su contraseña' : null,
                     onTap: () {
                       setState(() {
                         _formKey.currentState!.reset();
@@ -233,15 +211,13 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
               Padding(
-                  padding: const EdgeInsets.all(15),
-                  child:
-                      CustomEButton(text: 'Iniciar', myFunction: startSession)),
+                padding: const EdgeInsets.all(15),
+                child: CustomEButton(text: 'Iniciar', myFunction: startSession),
+              ),
               Padding(
                 padding: const EdgeInsets.all(15),
-                child: CustomEButton(
-                  text: 'Registro',
-                  myFunction: openRegister
-                ),
+                child:
+                    CustomEButton(text: 'Registro', myFunction: openRegister),
               ),
               TextButton(
                   onPressed: olvidasteContrasena,
