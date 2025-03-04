@@ -5,6 +5,9 @@ import 'package:inicio_sesion/repositories/UserRepository.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:numberpicker/numberpicker.dart';
+import 'package:logger/logger.dart';
+import '../commons/snacksbar.dart';
+import '../commons/constants.dart';
 
 class EditionUserPage extends StatefulWidget {
   final User usuario;
@@ -16,37 +19,52 @@ class EditionUserPage extends StatefulWidget {
 class _EditionUserPageState extends State<EditionUserPage> {
   final _formKey = GlobalKey<FormState>();
   final _userRepository = UserRepository();
+  final logger = Logger();
   late TextEditingController _userController;
   late TextEditingController _passwordController;
   late TextEditingController _confirmPasswordController;
-  String birthplace = "";
+  String? _imagePath;
   int _selectedAge = 20;
   String _selectedTitle = 'Sr.';
-  File? _image;
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    birthplace = widget.usuario.lugarNacimiento;
     _selectedAge = widget.usuario.edad;
     _userController = TextEditingController(text: widget.usuario.nombre);
-    _passwordController =
-        TextEditingController(text: widget.usuario.contrasena);
-    _confirmPasswordController =
-        TextEditingController(text: widget.usuario.contrasena);
+    _passwordController = TextEditingController(text: widget.usuario.contrasena);
+    _confirmPasswordController = TextEditingController(text: widget.usuario.contrasena);
     _selectedTitle = widget.usuario.trato ?? 'Sr.';
-    if (!kIsWeb && (widget.usuario.imagen?.isNotEmpty ?? false)) {
-      _image = File(widget.usuario.imagen!);
-    }
+    _imagePath = widget.usuario.imagen;
+  }
+
+  @override
+  void dispose() {
+    _userController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 
   Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
-      });
+    try {
+      final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        setState(() {
+          _imagePath = pickedFile.path;
+        });
+        logger.d("Imagen seleccionada: ${pickedFile.path}");
+      }
+    } catch (e) {
+      logger.e("Error al seleccionar imagen: $e");
+      if (mounted) {
+        SnaksBar.showSnackBar(
+          context,
+          "Error al seleccionar imagen",
+          color: Constants.errorColor
+        );
+      }
     }
   }
 
@@ -55,31 +73,33 @@ class _EditionUserPageState extends State<EditionUserPage> {
       try {
         final updatedUser = User(
           id: user.id,
-          nombre: user.nombre,
-          contrasena: _passwordController.text.isEmpty
-              ? user.contrasena
-              : _passwordController.text,
+          nombre: _userController.text,
+          contrasena: _passwordController.text,
           edad: _selectedAge,
-          imagen: _image?.path ?? user.imagen,
-          lugarNacimiento: birthplace,
+          imagen: _imagePath,
           trato: _selectedTitle,
+          lugarNacimiento: user.lugarNacimiento,
           administrador: user.administrador,
           bloqueado: user.bloqueado,
         );
 
-        await _userRepository.actualizarUsuario(
-            user.id.toString(), updatedUser);
+        await _userRepository.actualizarUsuario(user.id.toString(), updatedUser);
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Datos actualizados')),
+          SnaksBar.showSnackBar(
+            context,
+            "Usuario actualizado exitosamente",
+            color: Constants.successColor
           );
           Navigator.pop(context, updatedUser);
         }
       } catch (e) {
+        logger.e("Error al actualizar usuario: $e");
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al actualizar: $e')),
+          SnaksBar.showSnackBar(
+            context,
+            "Error al actualizar usuario: ${e.toString()}",
+            color: Constants.errorColor
           );
         }
       }
@@ -105,15 +125,13 @@ class _EditionUserPageState extends State<EditionUserPage> {
                       Radio<String>(
                         value: 'Sr.',
                         groupValue: _selectedTitle,
-                        onChanged: (value) =>
-                            setState(() => _selectedTitle = value!),
+                        onChanged: (value) => setState(() => _selectedTitle = value!),
                       ),
                       const Text('Sr.'),
                       Radio<String>(
                         value: 'Sra.',
                         groupValue: _selectedTitle,
-                        onChanged: (value) =>
-                            setState(() => _selectedTitle = value!),
+                        onChanged: (value) => setState(() => _selectedTitle = value!),
                       ),
                       const Text('Sra.'),
                     ],
@@ -125,11 +143,12 @@ class _EditionUserPageState extends State<EditionUserPage> {
                 onTap: _pickImage,
                 child: CircleAvatar(
                   radius: 40,
-                  backgroundImage:
-                      _image != null && !kIsWeb ? FileImage(_image!) : null,
-                  child: _image == null
-                      ? const Icon(Icons.camera_alt, size: 40)
-                      : null,
+                  backgroundImage: !kIsWeb && _imagePath != null
+                    ? FileImage(File(_imagePath!))
+                    : null,
+                  child: _imagePath == null
+                    ? const Icon(Icons.camera_alt, size: 40)
+                    : null,
                 ),
               ),
               const SizedBox(height: 10),
@@ -137,8 +156,7 @@ class _EditionUserPageState extends State<EditionUserPage> {
                 controller: _userController,
                 readOnly: true,
                 decoration: const InputDecoration(labelText: 'Usuario'),
-                validator: (value) =>
-                    value!.isEmpty ? 'Ingrese un usuario' : null,
+                validator: (value) => value!.isEmpty ? 'Ingrese un usuario' : null,
               ),
               const SizedBox(height: 10),
               TextFormField(
@@ -153,8 +171,7 @@ class _EditionUserPageState extends State<EditionUserPage> {
               TextFormField(
                 controller: _confirmPasswordController,
                 obscureText: true,
-                decoration:
-                    const InputDecoration(labelText: 'Repite Contraseña'),
+                decoration: const InputDecoration(labelText: 'Repite Contraseña'),
                 validator: (value) => _passwordController.text.isNotEmpty &&
                         value != _passwordController.text
                     ? 'Las contraseñas no coinciden'
@@ -168,8 +185,7 @@ class _EditionUserPageState extends State<EditionUserPage> {
                 maxValue: 60,
                 onChanged: (value) => setState(() => _selectedAge = value),
                 textStyle: const TextStyle(fontSize: 10),
-                selectedTextStyle:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                selectedTextStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
             ],
@@ -178,16 +194,17 @@ class _EditionUserPageState extends State<EditionUserPage> {
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar')),
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar')
+        ),
         ElevatedButton(
-            onPressed: () => _updateUser(widget.usuario),
-            style: ElevatedButton.styleFrom(
-              foregroundColor: Colors.white,
-              backgroundColor: Colors.blueAccent,
-              textStyle: const TextStyle(fontSize: 15),
-            ),
-            child: const Text('Actualizar')),
+          onPressed: () => _updateUser(widget.usuario),
+          style: ElevatedButton.styleFrom(
+            foregroundColor: Colors.white,
+            backgroundColor: Colors.blueAccent,
+          ),
+          child: const Text('Actualizar')
+        ),
       ],
     );
   }

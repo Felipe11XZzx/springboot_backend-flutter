@@ -8,17 +8,21 @@ import '../commons/constants.dart';
 import '../widgets/formusuario.dart';
 import '../commons/dialogs.dart';
 import '../repositories/UserRepository.dart';
+import 'package:logger/logger.dart';
+import '../commons/snacksbar.dart';
 
 class AdministerManagementPage extends StatefulWidget {
   final User currentAdmin;
   const AdministerManagementPage({super.key, required this.currentAdmin});
 
   @override
-  _AdministerManagementPageState createState() => _AdministerManagementPageState();
+  _AdministerManagementPageState createState() =>
+      _AdministerManagementPageState();
 }
 
 class _AdministerManagementPageState extends State<AdministerManagementPage> {
   final UserRepository _userRepository = UserRepository();
+  final logger = Logger();
   List<User> users = [];
 
   @override
@@ -34,39 +38,64 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
         users = loadedUsers;
       });
     } catch (e) {
+      logger.e("Error al cargar usuarios: $e");
       if (mounted) {
-        Dialogs.showSnackBar(context, "Error al cargar usuarios: $e", color: Constants.errorColor);
+        SnaksBar.showSnackBar(context, "Error al cargar usuarios: $e",
+            color: Constants.errorColor);
       }
     }
   }
 
-  Future<void> _bloquearUsuario(BuildContext context, User usuario, int index) async {
+  Future<void> _bloquearUsuario(
+      BuildContext context, User usuario, int index) async {
     try {
       final updatedUser = User(
         id: usuario.id,
         nombre: usuario.nombre,
         contrasena: usuario.contrasena,
         edad: usuario.edad,
-        trato: usuario.trato,
+        trato: usuario.trato ?? "Sr.",
         imagen: usuario.imagen,
-        lugarNacimiento: usuario.lugarNacimiento,
+        lugarNacimiento: usuario.lugarNacimiento ?? "",
         administrador: usuario.administrador,
-        bloqueado: !usuario.bloqueado,
+        bloqueado: !(usuario.bloqueado ?? false),
       );
 
-      await _userRepository.actualizarUsuario(usuario.id.toString(), updatedUser);
+      await _userRepository.actualizarUsuario(
+          usuario.id.toString(), updatedUser);
       await _loadUsers();
-      
+
       if (mounted) {
-        Dialogs.showSnackBar(
-          context, 
-          usuario.bloqueado ? "Usuario desbloqueado" : "Usuario bloqueado",
-          color: Constants.successColor
-        );
+        SnaksBar.showSnackBar(
+            context,
+            (usuario.bloqueado ?? false)
+                ? "Usuario desbloqueado"
+                : "Usuario bloqueado",
+            color: Constants.successColor);
       }
     } catch (e) {
+      logger.e("Error al cambiar estado: $e");
       if (mounted) {
-        Dialogs.showSnackBar(context, "Error al cambiar estado: $e", color: Constants.errorColor);
+        SnaksBar.showSnackBar(context, "Error al cambiar estado: $e",
+            color: Constants.errorColor);
+      }
+    }
+  }
+
+  Future<void> _eliminarUsuario(BuildContext context, User usuario) async {
+    try {
+      await _userRepository.eliminarUsuario(usuario.id.toString());
+      await _loadUsers();
+
+      if (mounted) {
+        SnaksBar.showSnackBar(context, "Usuario eliminado correctamente",
+            color: Constants.successColor);
+      }
+    } catch (e) {
+      logger.e("Error al eliminar usuario: $e");
+      if (mounted) {
+        SnaksBar.showSnackBar(context, "Error al eliminar usuario: $e",
+            color: Constants.errorColor);
       }
     }
   }
@@ -94,9 +123,12 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
                 selectedTratement: selectedTreatment,
                 imagenPath: imagePath,
                 isAdmin: isAdmin,
-                onTratementChanged: (value) => setDialogState(() => selectedTreatment = value!),
-                onImageChanged: (value) => setDialogState(() => imagePath = value),
-                onAdminChanged: (value) => setDialogState(() => isAdmin = value!),
+                onTratementChanged: (value) =>
+                    setDialogState(() => selectedTreatment = value!),
+                onImageChanged: (value) =>
+                    setDialogState(() => imagePath = value),
+                onAdminChanged: (value) =>
+                    setDialogState(() => isAdmin = value!),
                 onModifiedUser: (user) {},
               ),
             ),
@@ -107,21 +139,23 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
               ),
               ElevatedButton(
                 onPressed: () async {
-                  // Validación de campos
-                  String? userError = Validations.validateRequired(userController.text);
-                  String? passwordError = Validations.validatePassword(passwordController.text);
-                  String? ageError = Validations.validateAge(ageController.text);
+                  String? userError =
+                      Validations.validateRequired(userController.text);
+                  String? passwordError =
+                      Validations.validatePassword(passwordController.text);
+                  String? ageError =
+                      Validations.validateAge(ageController.text);
 
-                  if (userError != null) {
-                    Dialogs.showSnackBar(context, userError, color: Constants.errorColor);
-                    return;
-                  }
-                  if (passwordError != null) {
-                    Dialogs.showSnackBar(context, passwordError, color: Constants.errorColor);
-                    return;
-                  }
-                  if (ageError != null) {
-                    Dialogs.showSnackBar(context, ageError, color: Constants.errorColor);
+                  if (userError != null ||
+                      passwordError != null ||
+                      ageError != null) {
+                    SnaksBar.showSnackBar(
+                        context,
+                        userError ??
+                            passwordError ??
+                            ageError ??
+                            "Error de validación",
+                        color: Constants.errorColor);
                     return;
                   }
 
@@ -131,10 +165,9 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
                     final newUser = User(
                       nombre: userController.text,
                       contrasena: passwordController.text,
-                      contrasena2: passwordController.text,
                       edad: int.parse(ageController.text),
                       trato: selectedTreatment,
-                      imagen: imagePath ?? Images.getDefaultImage(isAdmin),
+                      imagen: imagePath,
                       lugarNacimiento: "Madrid",
                       administrador: isAdmin,
                       bloqueado: false,
@@ -142,14 +175,19 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
 
                     await _userRepository.anadirUsuario(newUser);
                     await _loadUsers();
-                    
+
                     Navigator.pop(dialogContext);
                     if (mounted) {
-                      Dialogs.showSnackBar(context, "Usuario creado correctamente", color: Constants.successColor);
+                      SnaksBar.showSnackBar(
+                          context, "Usuario creado correctamente",
+                          color: Constants.successColor);
                     }
                   } catch (e) {
+                    logger.e("Error al crear usuario: $e");
                     if (mounted) {
-                      Dialogs.showSnackBar(context, "Error al crear usuario: $e", color: Constants.errorColor);
+                      SnaksBar.showSnackBar(
+                          context, "Error al crear usuario: $e",
+                          color: Constants.errorColor);
                     }
                   }
                 },
@@ -167,12 +205,15 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
   }
 
   void _editUser(User user) {
-    TextEditingController userController = TextEditingController(text: user.nombre);
-    TextEditingController passwordController = TextEditingController(text: user.contrasena);
-    TextEditingController ageController = TextEditingController(text: user.edad.toString());
+    TextEditingController userController =
+        TextEditingController(text: user.nombre);
+    TextEditingController passwordController =
+        TextEditingController(text: user.contrasena);
+    TextEditingController ageController =
+        TextEditingController(text: user.edad.toString());
     String selectedTreatment = user.trato ?? "Sr.";
     String? imagePath = user.imagen;
-    bool isAdmin = user.administrador;
+    bool isAdmin = user.administrador ?? false;
 
     showDialog(
       context: context,
@@ -189,9 +230,12 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
                 selectedTratement: selectedTreatment,
                 imagenPath: imagePath,
                 isAdmin: isAdmin,
-                onTratementChanged: (value) => setDialogState(() => selectedTreatment = value!),
-                onImageChanged: (value) => setDialogState(() => imagePath = value),
-                onAdminChanged: (value) => setDialogState(() => isAdmin = value!),
+                onTratementChanged: (value) =>
+                    setDialogState(() => selectedTreatment = value!),
+                onImageChanged: (value) =>
+                    setDialogState(() => imagePath = value),
+                onAdminChanged: (value) =>
+                    setDialogState(() => isAdmin = value!),
                 onModifiedUser: (user) {},
               ),
             ),
@@ -202,15 +246,15 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
               ),
               ElevatedButton(
                 onPressed: () async {
-                  String? passwordError = Validations.validatePassword(passwordController.text);
-                  String? ageError = Validations.validateAge(ageController.text);
+                  String? passwordError =
+                      Validations.validatePassword(passwordController.text);
+                  String? ageError =
+                      Validations.validateAge(ageController.text);
 
-                  if (passwordError != null) {
-                    Dialogs.showSnackBar(context, passwordError, color: Constants.errorColor);
-                    return;
-                  }
-                  if (ageError != null) {
-                    Dialogs.showSnackBar(context, ageError, color: Constants.errorColor);
+                  if (passwordError != null || ageError != null) {
+                    SnaksBar.showSnackBar(context,
+                        passwordError ?? ageError ?? "Error de validación",
+                        color: Constants.errorColor);
                     return;
                   }
 
@@ -224,21 +268,27 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
                       edad: int.parse(ageController.text),
                       trato: selectedTreatment,
                       imagen: imagePath,
-                      lugarNacimiento: user.lugarNacimiento,
+                      lugarNacimiento: user.lugarNacimiento ?? "",
                       administrador: isAdmin,
-                      bloqueado: user.bloqueado,
+                      bloqueado: user.bloqueado ?? false,
                     );
 
-                    await _userRepository.actualizarUsuario(user.id.toString(), updatedUser);
+                    await _userRepository.actualizarUsuario(
+                        user.id.toString(), updatedUser);
                     await _loadUsers();
 
                     Navigator.pop(dialogContext);
                     if (mounted) {
-                      Dialogs.showSnackBar(context, "Usuario actualizado correctamente", color: Constants.successColor);
+                      SnaksBar.showSnackBar(
+                          context, "Usuario actualizado correctamente",
+                          color: Constants.successColor);
                     }
                   } catch (e) {
+                    logger.e("Error al actualizar usuario: $e");
                     if (mounted) {
-                      Dialogs.showSnackBar(context, "Error al actualizar usuario: $e", color: Constants.errorColor);
+                      SnaksBar.showSnackBar(
+                          context, "Error al actualizar usuario: $e",
+                          color: Constants.errorColor);
                     }
                   }
                 },
@@ -260,47 +310,57 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Gestión de Usuarios'),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: _createUser,
+          ),
+        ],
       ),
       body: ListView.builder(
         itemCount: users.length,
         itemBuilder: (context, index) {
           final user = users[index];
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundImage: user.imagen != null && user.imagen!.isNotEmpty && !kIsWeb
-                  ? FileImage(File(user.imagen!))
-                  : null,
-              child: user.imagen == null || user.imagen!.isEmpty
-                  ? const Icon(Icons.person)
-                  : null,
-            ),
-            title: Text(user.nombre),
-            subtitle: Text('Edad: ${user.edad}'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    user.bloqueado ? Icons.lock : Icons.lock_open,
-                    color: user.bloqueado ? Colors.red : Colors.green,
+          return Card(
+            margin: const EdgeInsets.all(8.0),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundImage: !kIsWeb &&
+                        user.imagen != null &&
+                        user.imagen!.isNotEmpty &&
+                        File(user.imagen!).existsSync()
+                    ? FileImage(File(user.imagen!))
+                    : null,
+                child: user.imagen == null || user.imagen!.isEmpty
+                    ? const Icon(Icons.person)
+                    : null,
+              ),
+              title: Text('${user.trato ?? "Sr."} ${user.nombre}'),
+              subtitle: Text('Edad: ${user.edad}'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      (user.bloqueado ?? false) ? Icons.lock : Icons.lock_open,
+                      color:
+                          (user.bloqueado ?? false) ? Colors.red : Colors.green,
+                    ),
+                    onPressed: () => _bloquearUsuario(context, user, index),
                   ),
-                  onPressed: () => _bloquearUsuario(context, user, index),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: () => _editUser(user),
-                ),
-              ],
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _eliminarUsuario(context, user),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => _editUser(user),
+                  ),
+                ],
+              ),
             ),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createUser,
-        backgroundColor: Colors.blueAccent,
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

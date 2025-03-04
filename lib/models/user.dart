@@ -6,9 +6,9 @@ class User {
   final String? imagen;
   final int edad;
   final String? trato;
-  final String lugarNacimiento;
+  final String? lugarNacimiento;  
   final bool administrador;
-  final bool bloqueado;
+  final bool? bloqueado;  
 
   User({
     this.id,
@@ -18,52 +18,46 @@ class User {
     this.imagen = "",
     required this.edad,
     this.trato = "Sr.",
-    required this.lugarNacimiento,
+    this.lugarNacimiento = "",  
     this.administrador = false,
     this.bloqueado = false,
   });
 
-  int? getId() => id;
-  String getNombre() => nombre;
-  String getPass() => contrasena;
-  String? getImage() => imagen;
-  int getEdad() => edad;
-  String getLugarNacimiento() => lugarNacimiento;
-  String? getTrato() => trato;
-  bool getAdministrador() => administrador;
-
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
-      nombre: json['nombre'],
-      contrasena: json['contrasena'],
-      contrasena2: json['contrasena2'],
-      edad: json['edad'],
-      trato: json['trato'],
-      imagen: json['imagen'],
-      lugarNacimiento: json['lugarNacimiento'],
-      administrador: json['administrador'] ?? false,
-      bloqueado: json['bloqueado'] ?? false,
+      id: json['id'] as int?,
+      nombre: json['nombre']?.toString() ?? '',
+      contrasena: json['contrasena']?.toString() ?? '',
+      contrasena2: json['contrasena2']?.toString(),
+      edad: json['edad'] as int? ?? 0,
+      trato: json['trato']?.toString(),
+      imagen: json['imagen']?.toString(),
+      lugarNacimiento: json['lugarNacimiento']?.toString(),
+      administrador: json['administrador'] as bool? ?? false,
+      bloqueado: json['bloqueado'] as bool? ?? false,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      if (id != null) "id": id,
+    final Map<String, dynamic> data = {
       "nombre": nombre,
       "contrasena": contrasena,
-      if (contrasena2 != null) "contrasena2": contrasena2,
-      if (imagen != null) "imagen": imagen,
       "edad": edad,
-      if (trato != null) "trato": trato,
-      "lugarNacimiento": lugarNacimiento,
       "administrador": administrador,
-      "bloqueado": bloqueado,
     };
+
+    if (id != null) data["id"] = id;
+    if (contrasena2 != null) data["contrasena2"] = contrasena2;
+    if (imagen != null && imagen!.isNotEmpty) data["imagen"] = imagen;
+    if (trato != null) data["trato"] = trato;
+    if (lugarNacimiento != null && lugarNacimiento!.isNotEmpty) data["lugarNacimiento"] = lugarNacimiento;
+    if (bloqueado != null) data["bloqueado"] = bloqueado;
+
+    return data;
   }
 
   @override
   String toString() {
-    return 'User(id: $id, nombre: $nombre, edad: $edad, trato: $trato)';
+    return 'User(id: $id, nombre: $nombre, edad: $edad)';
   }
 }

@@ -2,30 +2,38 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:inicio_sesion/models/user.dart';
-//import 'package:inicio_sesion/commons/images.dart';
+import 'package:logger/logger.dart';
 
 class ProfilePage extends StatelessWidget {
   final User usuarioActual;
+  final logger = Logger();
 
-  const ProfilePage({super.key, required this.usuarioActual});
+  ProfilePage({super.key, required this.usuarioActual});
 
   ImageProvider _getImageProvider() {
-    if (usuarioActual.imagen == null || usuarioActual.imagen!.isEmpty) {
-      return const AssetImage('assets/images/profile_default.jpg');
-    }
-
-    if (kIsWeb) {
-      if (usuarioActual.imagen!.startsWith('http') ||
-          usuarioActual.imagen!.startsWith('blob:')) {
-        return NetworkImage(usuarioActual.imagen!);
-      }
-      return const AssetImage('assets/images/profile_default.jpg');
-    } else {
-      try {
-        return FileImage(File(usuarioActual.imagen!));
-      } catch (e) {
+    try {
+      // Verificación más robusta de la imagen
+      if (usuarioActual.imagen == null || usuarioActual.imagen!.isEmpty) {
         return const AssetImage('assets/images/profile_default.jpg');
       }
+
+      if (kIsWeb) {
+        // Validación más estricta para imágenes web
+        if (usuarioActual.imagen!.startsWith('http') ||
+            usuarioActual.imagen!.startsWith('blob:')) {
+          return NetworkImage(usuarioActual.imagen!);
+        }
+        return const AssetImage('assets/images/profile_default.jpg');
+      } else {
+        // Verificar existencia del archivo antes de cargarlo
+        final imageFile = File(usuarioActual.imagen!);
+        return imageFile.existsSync()
+            ? FileImage(imageFile)
+            : const AssetImage('assets/images/profile_default.jpg');
+      }
+    } catch (e) {
+      logger.e('Error cargando imagen de perfil: $e');
+      return const AssetImage('assets/images/profile_default.jpg');
     }
   }
 
@@ -57,14 +65,18 @@ class ProfilePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    usuarioActual.nombre,
+                    usuarioActual.nombre.isNotEmpty
+                        ? usuarioActual.nombre
+                        : 'Sin nombre',
                     style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                         color: Colors.white),
                   ),
                   Text(
-                    usuarioActual.trato ?? 'Sr.',
+                    usuarioActual.trato?.trim().isNotEmpty == true
+                        ? usuarioActual.trato!
+                        : 'Sr.',
                     style: const TextStyle(fontSize: 16, color: Colors.white70),
                   ),
                 ],
@@ -81,30 +93,44 @@ class ProfilePage extends StatelessWidget {
                     child: Column(
                       children: [
                         _buildProfileTile(
-                            Icons.person, "Nombre", usuarioActual.nombre),
+                            Icons.person,
+                            "Nombre",
+                            usuarioActual.nombre.isNotEmpty
+                                ? usuarioActual.nombre
+                                : 'No especificado'),
                         _buildProfileTile(Icons.lock, "Contraseña", "********"),
                         _buildProfileTile(
-                            Icons.cake, "Edad", usuarioActual.edad.toString()),
+                            Icons.cake,
+                            "Edad",
+                            usuarioActual.edad != null
+                                ? usuarioActual.edad.toString()
+                                : 'No especificada'),
                         _buildProfileTile(
                             Icons.location_on,
                             "Lugar de Nacimiento",
-                            usuarioActual.lugarNacimiento),
+                            usuarioActual.lugarNacimiento?.trim().isNotEmpty ==
+                                    true
+                                ? usuarioActual.lugarNacimiento!
+                                : "No especificado"),
                         _buildProfileTile(
-                          usuarioActual.administrador
-                              ? Icons.security
-                              : Icons.person_outline,
-                          "Rol",
-                          usuarioActual.administrador
-                              ? "Administrador"
-                              : "Usuario",
-                        ),
+                            usuarioActual.administrador ?? false
+                                ? Icons.security
+                                : Icons.person_outline,
+                            "Rol",
+                            usuarioActual.administrador ?? false
+                                ? "Administrador"
+                                : "Usuario"),
                         _buildProfileTile(
-                          usuarioActual.bloqueado
-                              ? Icons.block
-                              : Icons.check_circle,
-                          "Estado",
-                          usuarioActual.bloqueado ? "Bloqueado" : "Activo",
-                        ),
+                            usuarioActual.bloqueado ?? false
+                                ? Icons.block
+                                : Icons.check_circle,
+                            "Estado",
+                            usuarioActual.bloqueado ?? false
+                                ? "Bloqueado"
+                                : "Activo",
+                            color: usuarioActual.bloqueado ?? false
+                                ? Colors.red
+                                : Colors.green),
                       ],
                     ),
                   ),
@@ -117,11 +143,12 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileTile(IconData icon, String title, String value) {
+  Widget _buildProfileTile(IconData icon, String title, String value,
+      {Color? color}) {
     return ListTile(
-      leading: Icon(icon, color: Colors.blueAccent),
+      leading: Icon(icon, color: color ?? Colors.blueAccent),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(value, style: const TextStyle(fontSize: 16)),
+      subtitle: Text(value, style: TextStyle(fontSize: 16, color: color)),
     );
   }
 }

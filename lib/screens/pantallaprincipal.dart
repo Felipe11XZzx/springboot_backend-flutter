@@ -5,7 +5,7 @@ import 'package:inicio_sesion/screens/pantallaadministrador.dart';
 import 'package:inicio_sesion/screens/pantallaregistro.dart';
 import 'package:inicio_sesion/repositories/UserRepository.dart';
 import 'package:inicio_sesion/screens/pantallainiciocliente.dart';
-//import '../models/user.dart';
+import '../models/user.dart';
 import '../commons/snacksbar.dart';
 import 'package:logger/logger.dart';
 
@@ -40,6 +40,25 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> startSession() async {
     if (_formKey.currentState!.validate()) {
       try {
+        // Primero verificar si es el usuario admin
+        if (userController.text == "admin" && passController.text == "admin") {
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => MyAdminPage(
+                      usuarioAdmin: User(
+                          id: 99,
+                          nombre: "admin",
+                          contrasena: "admin",
+                          administrador: true,
+                          edad: 51))),
+            );
+          }
+          return;
+        }
+
+        // Si no es admin, buscar en la base de datos
         final users = await _userRepository.listarUsuarios();
         final user = users.firstWhere(
           (u) =>
@@ -48,7 +67,7 @@ class _MyHomePageState extends State<MyHomePage> {
           orElse: () => throw Exception('Usuario o contraseña incorrectos'),
         );
 
-        if (user.bloqueado) {
+        if (user.bloqueado ?? false) {
           if (mounted) {
             SnaksBar.showSnackBar(
                 context, "Usuario bloqueado. Contacte al administrador",
