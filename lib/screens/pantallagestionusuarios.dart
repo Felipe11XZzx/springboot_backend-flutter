@@ -270,7 +270,7 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
                       imagen: imagePath,
                       lugarNacimiento: user.lugarNacimiento ?? "",
                       administrador: isAdmin,
-                      bloqueado: user.bloqueado ?? false,
+                      bloqueado: user.bloqueado,
                     );
 
                     await _userRepository.actualizarUsuario(
@@ -343,8 +343,7 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
                   IconButton(
                     icon: Icon(
                       (user.bloqueado ?? false) ? Icons.lock : Icons.lock_open,
-                      color:
-                          (user.bloqueado ?? false) ? Colors.red : Colors.green,
+                      color: (user.bloqueado ?? false) ? Colors.red : Colors.green,
                     ),
                     onPressed: () => _bloquearUsuario(context, user, index),
                   ),

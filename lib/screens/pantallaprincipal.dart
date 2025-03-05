@@ -52,6 +52,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           nombre: "admin",
                           contrasena: "admin",
                           administrador: true,
+                          bloqueado: false,
                           edad: 51))),
             );
           }

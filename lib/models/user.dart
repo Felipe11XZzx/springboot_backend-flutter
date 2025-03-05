@@ -6,9 +6,9 @@ class User {
   final String? imagen;
   final int edad;
   final String? trato;
-  final String? lugarNacimiento;  
+  final String? lugarNacimiento;
   final bool administrador;
-  final bool? bloqueado;  
+  final bool? bloqueado;
 
   User({
     this.id,
@@ -18,7 +18,7 @@ class User {
     this.imagen = "",
     required this.edad,
     this.trato = "Sr.",
-    this.lugarNacimiento = "",  
+    this.lugarNacimiento = "",
     this.administrador = false,
     this.bloqueado = false,
   });
@@ -44,14 +44,14 @@ class User {
       "contrasena": contrasena,
       "edad": edad,
       "administrador": administrador,
+      "bloqueado": bloqueado,
+      "lugarNacimiento": lugarNacimiento ?? "",
     };
 
     if (id != null) data["id"] = id;
     if (contrasena2 != null) data["contrasena2"] = contrasena2;
     if (imagen != null && imagen!.isNotEmpty) data["imagen"] = imagen;
     if (trato != null) data["trato"] = trato;
-    if (lugarNacimiento != null && lugarNacimiento!.isNotEmpty) data["lugarNacimiento"] = lugarNacimiento;
-    if (bloqueado != null) data["bloqueado"] = bloqueado;
 
     return data;
   }
