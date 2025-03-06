@@ -22,7 +22,10 @@ class _MyAdminPageState extends State<MyAdminPage> {
   void _pantallaInicio() {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const MyHomePage(title: 'Pantalla Principal',)),
+      MaterialPageRoute(
+          builder: (context) => const MyHomePage(
+                title: 'Pantalla Principal',
+              )),
       (route) => false,
     );
   }
@@ -35,7 +38,8 @@ class _MyAdminPageState extends State<MyAdminPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-          builder: (context) => ProfilePage(usuarioActual: widget.usuarioAdmin)),
+          builder: (context) =>
+              ProfilePage(usuarioActual: widget.usuarioAdmin)),
     );
   }
 
@@ -44,7 +48,9 @@ class _MyAdminPageState extends State<MyAdminPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text("Bienvenido ${widget.usuarioAdmin.nombre}"),
+        title: Text("Bienvenido ${widget.usuarioAdmin.nombre}",
+            style: const TextStyle(color: Colors.white)),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       drawer: DrawerPrincipal(
         onMiPerfil: _pantallaPerfil,
@@ -82,8 +88,7 @@ class _MyAdminPageState extends State<MyAdminPage> {
                 myFunction: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (context) => MyProductPage()),
+                    MaterialPageRoute(builder: (context) => MyProductPage()),
                   );
                 },
                 icon: Icons.shopping_bag,
@@ -94,8 +99,7 @@ class _MyAdminPageState extends State<MyAdminPage> {
                 myFunction: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (context) => MyOrdersPage()),
+                    MaterialPageRoute(builder: (context) => MyOrdersPage()),
                   );
                 },
                 icon: Icons.shopping_cart,

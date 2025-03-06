@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import '../models/user.dart';
-import '../commons/images.dart';
 import '../commons/validations.dart';
 import '../commons/constants.dart';
 import '../widgets/formusuario.dart';
@@ -343,7 +342,8 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
                   IconButton(
                     icon: Icon(
                       (user.bloqueado ?? false) ? Icons.lock : Icons.lock_open,
-                      color: (user.bloqueado ?? false) ? Colors.red : Colors.green,
+                      color:
+                          (user.bloqueado ?? false) ? Colors.red : Colors.green,
                     ),
                     onPressed: () => _bloquearUsuario(context, user, index),
                   ),

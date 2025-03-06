@@ -1,3 +1,5 @@
+import 'package:logger/logger.dart';
+
 class User {
   final int? id;
   final String nombre;
@@ -9,6 +11,7 @@ class User {
   final String? lugarNacimiento;
   final bool administrador;
   final bool? bloqueado;
+  static final logger = Logger();
 
   User({
     this.id,
@@ -24,36 +27,52 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'] as int?,
-      nombre: json['nombre']?.toString() ?? '',
-      contrasena: json['contrasena']?.toString() ?? '',
-      contrasena2: json['contrasena2']?.toString(),
-      edad: json['edad'] as int? ?? 0,
-      trato: json['trato']?.toString(),
-      imagen: json['imagen']?.toString(),
-      lugarNacimiento: json['lugarNacimiento']?.toString(),
-      administrador: json['administrador'] as bool? ?? false,
-      bloqueado: json['bloqueado'] as bool? ?? false,
-    );
+    try {
+      logger.d('Parseando JSON de usuario: $json');
+      return User(
+        id: json['id'] as int?,
+        nombre: json['nombre']?.toString() ?? '',
+        contrasena: json['contrasena']?.toString() ?? '',
+        contrasena2: json['contrasena2']?.toString(),
+        edad: (json['edad'] is String)
+            ? int.tryParse(json['edad']) ?? 0
+            : json['edad'] as int? ?? 0,
+        trato: json['trato']?.toString(),
+        imagen: json['imagen']?.toString(),
+        lugarNacimiento: json['lugarNacimiento']?.toString(),
+        administrador: json['administrador'] as bool? ?? false,
+        bloqueado: json['bloqueado'] as bool? ?? false,
+      );
+    } catch (e, stackTrace) {
+      logger.e('Error al parsear JSON de usuario:',
+          error: e, stackTrace: stackTrace);
+      rethrow;
+    }
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = {
-      "nombre": nombre,
-      "contrasena": contrasena,
-      "edad": edad,
-      "administrador": administrador,
-      "bloqueado": bloqueado,
-      "lugarNacimiento": lugarNacimiento ?? "",
-    };
+    try {
+      final Map<String, dynamic> data = {
+        "nombre": nombre,
+        "contrasena": contrasena,
+        "edad": edad,
+        "administrador": administrador,
+        "bloqueado": bloqueado,
+        "lugarNacimiento": lugarNacimiento ?? "",
+      };
 
-    if (id != null) data["id"] = id;
-    if (contrasena2 != null) data["contrasena2"] = contrasena2;
-    if (imagen != null && imagen!.isNotEmpty) data["imagen"] = imagen;
-    if (trato != null) data["trato"] = trato;
+      if (id != null) data["id"] = id;
+      if (contrasena2 != null) data["contrasena2"] = contrasena2;
+      if (imagen != null && imagen!.isNotEmpty) data["imagen"] = imagen;
+      if (trato != null) data["trato"] = trato;
 
-    return data;
+      logger.d('Generando JSON de usuario: $data');
+      return data;
+    } catch (e, stackTrace) {
+      logger.e('Error al generar JSON de usuario:',
+          error: e, stackTrace: stackTrace);
+      rethrow;
+    }
   }
 
   @override

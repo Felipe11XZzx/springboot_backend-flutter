@@ -33,7 +33,8 @@ class ProductListItem extends StatelessWidget {
               width: 100,
               height: 100,
               child: Image(
-                image: Images.getImageProvider(producto.imagen),
+                image: Images.getImageProvider(producto.imagenProducto ??
+                    "assets/images/product_default.png"),
                 fit: BoxFit.cover,
               ),
             ),
@@ -54,9 +55,9 @@ class ProductListItem extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text("Precio: ${PriceFormat.formatPrice(producto.precio)}"),
                   Text(
-                    "Stock: ${producto.stock}",
+                    "Stock: ${producto.cantidad}",
                     style: TextStyle(
-                      color: producto.stock > 0
+                      color: producto.cantidad > 0
                           ? Constants.successColor
                           : Constants.errorColor,
                       fontWeight: FontWeight.bold,
@@ -65,7 +66,7 @@ class ProductListItem extends StatelessWidget {
                 ],
               ),
             ),
-            if (isEditable) 
+            if (isEditable)
               Column(
                 children: [
                   Row(
@@ -82,9 +83,9 @@ class ProductListItem extends StatelessWidget {
                       ),
                       IconButton(
                         onPressed:
-                            producto.stock > cantidad ? onIncrement : null,
+                            producto.cantidad > cantidad ? onIncrement : null,
                         icon: const Icon(Icons.add),
-                        color: producto.stock > cantidad
+                        color: producto.cantidad > cantidad
                             ? Constants.successColor
                             : Colors.grey,
                       ),

@@ -14,8 +14,10 @@ class _ContactPageState extends State<ContactPage> {
   final String telefono = "637339769";
   final String email = "coldmanxxii@gmail.com";
   final String web = "https://coldmansl.com/";
-  final String direccion = "Calle Monasterio de Roncesvalles, 72, local, Zaragoza 50002";
-  final String googleMapsUrl = "https://www.google.es/maps/place/C.+del+Monasterio+de+Roncesvalles,+72,+50002+Zaragoza/@41.6433112,-0.8664988,14.68z/data=!4m6!3m5!1s0xd591451f172f8b5:0x92100ef9a2b88600!8m2!3d41.6432834!4d-0.8587523!16s%2Fg%2F11c5pc7n50?entry=ttu&g_ep=EgoyMDI1MDIyNC4wIKXMDSoJLDEwMjExNDUzSAFQAw%3D%3D";
+  final String direccion =
+      "Calle Monasterio de Roncesvalles, 72, local, Zaragoza 50002";
+  final String googleMapsUrl =
+      "https://www.google.es/maps/place/C.+del+Monasterio+de+Roncesvalles,+72,+50002+Zaragoza/@41.6433112,-0.8664988,14.68z/data=!4m6!3m5!1s0xd591451f172f8b5:0x92100ef9a2b88600!8m2!3d41.6432834!4d-0.8587523!16s%2Fg%2F11c5pc7n50?entry=ttu&g_ep=EgoyMDI1MDIyNC4wIKXMDSoJLDEwMjExNDUzSAFQAw%3D%3D";
 
   final latLng.LatLng ubicacionEmpresa = latLng.LatLng(41.6432895, -0.8636433);
   late final MapController _mapController = MapController();
@@ -33,8 +35,9 @@ class _ContactPageState extends State<ContactPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Contacto"),
+        title: Text("Contacto", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.blueAccent,
+        iconTheme: IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -43,21 +46,24 @@ class _ContactPageState extends State<ContactPage> {
             children: [
               SizedBox(height: 20),
               Image.asset(
-                  'assets/images/logo_coldman.png',
-                  width: 450,
-                  height: 100,
-                  fit: BoxFit.cover,
-                ),
-                SizedBox(height: 20),
+                'assets/images/logo_coldman.png',
+                width: 450,
+                height: 100,
+                fit: BoxFit.cover,
+              ),
+              SizedBox(height: 20),
 
               // Tarjeta con la información de contacto
               Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15)),
                 elevation: 5,
                 child: Column(
                   children: [
-                    _buildContactTile(Icons.phone, "Teléfono", telefono, "tel:$telefono"),
-                    _buildContactTile(Icons.email, "Correo", email, "mailto:$email"),
+                    _buildContactTile(
+                        Icons.phone, "Teléfono", telefono, "tel:$telefono"),
+                    _buildContactTile(
+                        Icons.email, "Correo", email, "mailto:$email"),
                     _buildContactTile(Icons.web, "Página Web", web, web),
                   ],
                 ),
@@ -66,7 +72,8 @@ class _ContactPageState extends State<ContactPage> {
               SizedBox(height: 20),
 
               // Mapa interactivo con marcador
-              Text("Ubicación", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text("Ubicación",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               SizedBox(height: 10),
               Container(
                 height: 250,
@@ -90,7 +97,8 @@ class _ContactPageState extends State<ContactPage> {
                     ),
                     children: [
                       TileLayer(
-                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       ),
                       MarkerLayer(
                         markers: [
@@ -98,7 +106,8 @@ class _ContactPageState extends State<ContactPage> {
                             point: ubicacionEmpresa,
                             width: 60,
                             height: 60,
-                            child: Icon(Icons.location_on, color: Colors.red, size: 40),
+                            child: Icon(Icons.location_on,
+                                color: Colors.red, size: 40),
                           ),
                         ],
                       ),
@@ -117,7 +126,8 @@ class _ContactPageState extends State<ContactPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blueAccent,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ],
@@ -128,7 +138,8 @@ class _ContactPageState extends State<ContactPage> {
   }
 
   // Widget reutilizable para la información de contacto
-  Widget _buildContactTile(IconData icon, String title, String subtitle, String url) {
+  Widget _buildContactTile(
+      IconData icon, String title, String subtitle, String url) {
     return ListTile(
       leading: Icon(icon, color: Colors.blueAccent),
       title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),

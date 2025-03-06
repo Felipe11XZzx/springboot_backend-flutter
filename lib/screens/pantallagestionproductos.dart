@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:inicio_sesion/logica/productlogic.dart';
+import 'package:inicio_sesion/commons/snacksbar.dart';
 import 'package:inicio_sesion/models/product.dart';
 import 'package:inicio_sesion/commons/producto.dart';
 import 'package:inicio_sesion/commons/validations.dart';
 import 'package:inicio_sesion/commons/dialogs.dart';
 import 'package:inicio_sesion/commons/images.dart';
 import 'package:inicio_sesion/commons/constants.dart';
-import 'dart:math' show Random;
+import 'package:inicio_sesion/repositories/ProductRepository.dart';
+import 'package:inicio_sesion/screens/pantallaprincipal.dart';
+import 'package:logger/logger.dart';
 
 class MyProductPage extends StatefulWidget {
   const MyProductPage({super.key});
@@ -16,12 +18,42 @@ class MyProductPage extends StatefulWidget {
 }
 
 class _MyProductPageState extends State<MyProductPage> {
+  final ProductRepository _productRepository = ProductRepository();
+  final logger = Logger();
+  List<Product> products = [];
+  final defaultImage = "assets/images/default_product.png";
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarProductos();
+  }
+
+  Future<void> _cargarProductos() async {
+    try {
+      setState(() => isLoading = true);
+      final loadedProducts = await _productRepository.listarProductos();
+      setState(() {
+        products = loadedProducts;
+        isLoading = false;
+      });
+    } catch (e) {
+      logger.e("Error al cargar productos: $e");
+      setState(() => isLoading = false);
+      if (mounted) {
+        SnaksBar.showSnackBar(context, "Error al cargar productos: $e",
+            color: Constants.errorColor);
+      }
+    }
+  }
+
   void _nuevoProducto() {
     TextEditingController nameController = TextEditingController();
     TextEditingController descriptionController = TextEditingController();
     TextEditingController priceController = TextEditingController();
-    TextEditingController stockController = TextEditingController();
-    String? PathImage;
+    TextEditingController cantidadController = TextEditingController();
+    String? selectedImage;
 
     showDialog(
       context: context,
@@ -49,8 +81,8 @@ class _MyProductPageState extends State<MyProductPage> {
                     validator: Validations.validatePrice,
                   ),
                   TextFormField(
-                    controller: stockController,
-                    decoration: const InputDecoration(labelText: "Stock"),
+                    controller: cantidadController,
+                    decoration: const InputDecoration(labelText: "Cantidad"),
                     keyboardType: TextInputType.number,
                     validator: Validations.validateStock,
                   ),
@@ -59,7 +91,7 @@ class _MyProductPageState extends State<MyProductPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          PathImage ?? "No se ha seleccionado imagen",
+                          selectedImage ?? "No se ha seleccionado imagen",
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -67,7 +99,7 @@ class _MyProductPageState extends State<MyProductPage> {
                         onPressed: () async {
                           String? newPath = await Images.SelectImage();
                           if (newPath != null) {
-                            setDialogState(() => PathImage = newPath);
+                            setDialogState(() => selectedImage = newPath);
                           }
                         },
                         icon: const Icon(Icons.image),
@@ -87,36 +119,58 @@ class _MyProductPageState extends State<MyProductPage> {
                   if (Validations.validateRequired(nameController.text) !=
                           null ||
                       Validations.validatePrice(priceController.text) != null ||
-                      Validations.validateStock(stockController.text) != null) {
-                    Dialogs.showSnackBar(context,
-                        "Por favor, complete todos los campos correctamente",
-                        color: Constants.errorColor);
+                      Validations.validateStock(cantidadController.text) !=
+                          null) {
+                    SnaksBar.showSnackBar(
+                      context,
+                      "Por favor, complete todos los campos correctamente",
+                      color: Constants.errorColor,
+                    );
                     return;
                   }
 
                   await Dialogs.showLoadingSpinner(context);
 
-                  String nuevoId = 'PROD${Random().nextInt(10000)}';
+                  final nombre = nameController.text.trim();
+                  print('Nombre del producto a crear: "$nombre"');
+
                   Product nuevoProducto = Product(
-                    id: nuevoId,
-                    nombre: nameController.text,
-                    descripcion: descriptionController.text,
+                    nombre: nombre,
+                    descripcion: descriptionController.text.trim(),
                     precio:
                         double.parse(priceController.text.replaceAll(',', '.')),
-                    stock: int.parse(stockController.text),
-                    imagen: PathImage ?? Images.getDefaultImage(false),
+                    cantidad: int.parse(cantidadController.text),
+                    imagenProducto: selectedImage ?? defaultImage,
                   );
 
-                  ProductLogic.addProduct(nuevoProducto);
-                  Navigator.pop(dialogContext);
-                  setState(() {});
-                  Dialogs.showSnackBar(context, "Producto creado correctamente",
-                      color: Constants.successColor);
+                  print('Nuevo producto creado localmente: $nuevoProducto');
+                  print('JSON a enviar: ${nuevoProducto.toJson()}');
+
+                  try {
+                    print(
+                        'Producto antes de enviarlo: ${nuevoProducto.toJson()}');
+                    await _productRepository.agregarProducto(nuevoProducto);
+                    print('Producto enviado exitosamente');
+                    await _cargarProductos();
+                    if (mounted) {
+                      Navigator.pop(dialogContext);
+                      SnaksBar.showSnackBar(
+                        context,
+                        "Producto creado correctamente",
+                        color: Constants.successColor,
+                      );
+                    }
+                  } catch (e) {
+                    logger.e("Error al crear producto: $e");
+                    if (mounted) {
+                      SnaksBar.showSnackBar(
+                        context,
+                        "Error al crear el producto: $e",
+                        color: Constants.errorColor,
+                      );
+                    }
+                  }
                 },
-                style: ElevatedButton.styleFrom
-                (backgroundColor: Colors.blueAccent,
-                foregroundColor: Colors.white,
-                ),
                 child: const Text("Crear"),
               ),
             ],
@@ -126,16 +180,16 @@ class _MyProductPageState extends State<MyProductPage> {
     );
   }
 
-  void _actualizarProducto(Product Pproduct) {
+  void _actualizarProducto(Product producto) {
     TextEditingController nombreController =
-        TextEditingController(text: Pproduct.nombre);
+        TextEditingController(text: producto.nombre);
     TextEditingController descripcionController =
-        TextEditingController(text: Pproduct.descripcion);
+        TextEditingController(text: producto.descripcion);
     TextEditingController precioController =
-        TextEditingController(text: Pproduct.precio.toString());
-    TextEditingController stockController =
-        TextEditingController(text: Pproduct.stock.toString());
-    String? imagenPath = Pproduct.imagen;
+        TextEditingController(text: producto.precio.toString());
+    TextEditingController cantidadController =
+        TextEditingController(text: producto.cantidad.toString());
+    String? selectedImage = producto.imagenProducto;
 
     showDialog(
       context: context,
@@ -163,8 +217,8 @@ class _MyProductPageState extends State<MyProductPage> {
                     validator: Validations.validatePrice,
                   ),
                   TextFormField(
-                    controller: stockController,
-                    decoration: const InputDecoration(labelText: "Stock"),
+                    controller: cantidadController,
+                    decoration: const InputDecoration(labelText: "Cantidad"),
                     keyboardType: TextInputType.number,
                     validator: Validations.validateStock,
                   ),
@@ -173,7 +227,7 @@ class _MyProductPageState extends State<MyProductPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          imagenPath ?? "No se ha seleccionado imagen",
+                          selectedImage ?? "No se ha seleccionado imagen",
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -181,7 +235,7 @@ class _MyProductPageState extends State<MyProductPage> {
                         onPressed: () async {
                           String? newPath = await Images.SelectImage();
                           if (newPath != null) {
-                            setDialogState(() => imagenPath = newPath);
+                            setDialogState(() => selectedImage = newPath);
                           }
                         },
                         icon: const Icon(Icons.image),
@@ -202,30 +256,62 @@ class _MyProductPageState extends State<MyProductPage> {
                           null ||
                       Validations.validatePrice(precioController.text) !=
                           null ||
-                      Validations.validateStock(stockController.text) != null) {
-                    Dialogs.showSnackBar(context,
-                        "Por favor, complete todos los campos correctamente",
-                        color: Constants.errorColor);
+                      Validations.validateStock(cantidadController.text) !=
+                          null) {
+                    SnaksBar.showSnackBar(
+                      context,
+                      "Por favor, complete todos los campos correctamente",
+                      color: Constants.errorColor,
+                    );
                     return;
                   }
 
                   await Dialogs.showLoadingSpinner(context);
 
-                  Pproduct.nombre = nombreController.text;
-                  Pproduct.descripcion = descripcionController.text;
-                  Pproduct.precio =
-                      double.parse(precioController.text.replaceAll(',', '.'));
-                  Pproduct.stock = int.parse(stockController.text);
-                  Pproduct.imagen = imagenPath ?? Images.getDefaultImage(false);
-                  ProductLogic.updateProduct(Pproduct);
+                  final nombre = nombreController.text.trim();
+                  print('Nombre del producto a actualizar: "$nombre"');
 
-                  Navigator.pop(dialogContext);
-                  setState(() {});
-                  Dialogs.showSnackBar(
-                      context, "Producto actualizado correctamente",
-                      color: Constants.successColor);
+                  Product productoActualizado = Product(
+                    id: producto.id,
+                    nombre: nombre,
+                    descripcion: descripcionController.text.trim(),
+                    precio: double.parse(
+                        precioController.text.replaceAll(',', '.')),
+                    cantidad: int.parse(cantidadController.text),
+                    imagenProducto: selectedImage ?? producto.imagenProducto,
+                  );
+
+                  print(
+                      'Producto antes de actualizarlo: ${productoActualizado.toJson()}');
+                  print('JSON a enviar: ${productoActualizado.toJson()}');
+
+                  try {
+                    await _productRepository.modificarProducto(
+                      producto.id!.toString(),
+                      productoActualizado,
+                    );
+                    print('Producto actualizado exitosamente');
+                    await _cargarProductos();
+                    if (mounted) {
+                      Navigator.pop(dialogContext);
+                      SnaksBar.showSnackBar(
+                        context,
+                        "Producto actualizado correctamente",
+                        color: Constants.successColor,
+                      );
+                    }
+                  } catch (e) {
+                    logger.e("Error al actualizar producto: $e");
+                    if (mounted) {
+                      SnaksBar.showSnackBar(
+                        context,
+                        "Error al actualizar el producto: $e",
+                        color: Constants.errorColor,
+                      );
+                    }
+                  }
                 },
-                child: const Text("Guardar"),
+                child: const Text("Actualizar"),
               ),
             ],
           );
@@ -234,57 +320,90 @@ class _MyProductPageState extends State<MyProductPage> {
     );
   }
 
+  Future<void> _eliminarProducto(Product producto) async {
+    bool? confirmado = await Dialogs.showConfirmDialog(
+      context: context,
+      title: "Confirmar eliminación",
+      content: "¿Está seguro de eliminar el producto '${producto.nombre}'?",
+      style: const Text(''),
+    );
+
+    if (confirmado != true) return;
+
+    await Dialogs.showLoadingSpinner(context);
+
+    try {
+      await _productRepository.borrarProducto(producto.id!.toString());
+      await _cargarProductos();
+      if (mounted) {
+        SnaksBar.showSnackBar(
+          context,
+          "Producto eliminado correctamente",
+          color: Constants.successColor,
+        );
+      }
+    } catch (e) {
+      logger.e("Error al eliminar producto: $e");
+      if (mounted) {
+        SnaksBar.showSnackBar(
+          context,
+          "Error al eliminar el producto: $e",
+          color: Constants.errorColor,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    List<Product> listProducts = ProductLogic.productos;
     return Scaffold(
       appBar: AppBar(
         title: const Text("Gestión de Productos"),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    const MyHomePage(title: 'Pantalla Principal'),
+              ),
+            );
+          },
         ),
-      ),
-      body: Stack(
-        children: [
-          ListView.builder(
-            padding: const EdgeInsets.only(bottom: 80),
-            itemCount: listProducts.length,
-            itemBuilder: (context, index) {
-              Product producto = listProducts[index];
-              return CustomProducto(
-                product: producto,
-                onEdit: () => _actualizarProducto(producto),
-                onDelete: () async {
-                  bool? confirmar = await Dialogs.showConfirmDialog(
-                      context: context,
-                      title: "Confirmar eliminación",
-                      content: "¿Está seguro de eliminar ${producto.nombre}?",
-                      style: Text(''));
-
-                  if (confirmar == true) {
-                    await Dialogs.showLoadingSpinner(context);
-                    ProductLogic.deleteProduct(producto.id);
-                    setState(() {});
-                    Dialogs.showSnackBar(
-                        context, "Producto eliminado correctamente",
-                        color: Constants.successColor);
-                  }
-                },
-              );
-            },
-          ),
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: FloatingActionButton(
-              backgroundColor: Constants.primaryColor,
-              foregroundColor: Colors.white,
-              onPressed: _nuevoProducto,
-              child: const Icon(Icons.add),
-            ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _cargarProductos,
+            tooltip: "Recargar productos",
           ),
         ],
+      ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : products.isEmpty
+              ? const Center(
+                  child: Text(
+                    "No hay productos disponibles",
+                    style: TextStyle(fontSize: 18),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: products.length,
+                  padding: const EdgeInsets.all(8),
+                  itemBuilder: (context, index) {
+                    Product producto = products[index];
+                    return CustomProducto(
+                      product: producto,
+                      onEdit: () => _actualizarProducto(producto),
+                      onDelete: () => _eliminarProducto(producto),
+                    );
+                  },
+                ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _nuevoProducto,
+        backgroundColor: Constants.primaryColor,
+        child: const Icon(Icons.add),
       ),
     );
   }
