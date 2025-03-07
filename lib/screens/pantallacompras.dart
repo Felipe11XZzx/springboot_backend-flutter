@@ -179,8 +179,10 @@ class _ShoppingPageState extends State<ShoppingPage> {
       }
 
       // Generar un número de pedido único basado en la marca de tiempo
-      int numeroTemp = DateTime.now().millisecondsSinceEpoch % 1000000;
-      Map<String, int> numeroPedido = {'numero': numeroTemp};
+      // Asegurarse de que nunca sea 0 o nulo
+      int numeroPedido =
+          DateTime.now().millisecondsSinceEpoch % 900000 + 100000;
+      logger.d("Número de pedido generado: $numeroPedido");
 
       // Convertir el mapa de productos a un formato más detallado
       Map<String, dynamic> detalleProductos = {};
@@ -201,6 +203,13 @@ class _ShoppingPageState extends State<ShoppingPage> {
         }
       }
 
+      if (descripcion.isEmpty) {
+        Navigator.of(context).pop(); // Cerrar el spinner
+        SnaksBar.showSnackBar(context, "No hay productos seleccionados",
+            color: Constants.warningColor);
+        return;
+      }
+
       if (descripcion.isNotEmpty) {
         descripcion = descripcion.substring(0, descripcion.length - 2);
       }
@@ -216,7 +225,21 @@ class _ShoppingPageState extends State<ShoppingPage> {
         detalleProductos: detalleProductos,
       );
 
+      logger.d("Enviando pedido al servidor: ${pedido.toJson()}");
+
+      // Verificar que todos los campos estén correctamente configurados antes de enviar
+      if (pedido.numeroPedido == null || pedido.numeroPedido == 0) {
+        logger.e("Error: numeroPedido es nulo o cero");
+        throw Exception("El número de pedido no puede ser nulo o cero");
+      }
+
+      if (pedido.descripcion.isEmpty) {
+        logger.e("Error: descripción está vacía");
+        throw Exception("La descripción no puede estar vacía");
+      }
+
       await _orderRepository.agregarOrden(pedido);
+      logger.d("Pedido enviado con éxito");
 
       // Actualizar el stock de los productos
       for (var producto in productos) {
@@ -243,10 +266,8 @@ class _ShoppingPageState extends State<ShoppingPage> {
       if (mounted) {
         Navigator.of(context).pop(); // Cerrar el spinner
         SnaksBar.showSnackBar(
-          context, 
-          "Pedido #${numeroPedido['numero']} realizado con éxito",
-          color: Constants.successColor
-        );
+            context, "Pedido #$numeroPedido realizado con éxito",
+            color: Constants.successColor);
       }
     } catch (e) {
       logger.e("Error al realizar la compra: $e");

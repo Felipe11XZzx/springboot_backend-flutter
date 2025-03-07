@@ -44,6 +44,7 @@ class ProfilePage extends StatelessWidget {
         title: const Text('Mi Perfil',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.blueAccent,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
         child: Column(
