@@ -35,14 +35,22 @@ class _OrderListItemState extends State<OrderListItem> {
 
   Future<void> _cargarProductos() async {
     try {
+      if (!mounted)
+        return; // Verificar si el widget sigue montado antes de actualizar el estado
       setState(() => _isLoading = true);
+
       final productos = await _productRepository.listarProductos();
+
+      if (!mounted)
+        return; // Verificar nuevamente después de la operación asíncrona
       setState(() {
         _productosCache = {for (var p in productos) p.id!.toString(): p};
         _isLoading = false;
       });
     } catch (e) {
       logger.e("Error al cargar productos: $e");
+      if (!mounted)
+        return; // Verificar antes de actualizar el estado en caso de error
       setState(() => _isLoading = false);
     }
   }

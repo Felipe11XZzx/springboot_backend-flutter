@@ -238,40 +238,55 @@ class _ShoppingPageState extends State<ShoppingPage> {
         throw Exception("La descripción no puede estar vacía");
       }
 
+      // 1. Primero enviamos el pedido
       await _orderRepository.agregarOrden(pedido);
       logger.d("Pedido enviado con éxito");
 
-      // Actualizar el stock de los productos
-      for (var producto in productos) {
-        if (producto.id == null) continue;
-        int cantidad = cantidades[producto.id!] ?? 0;
-        if (cantidad > 0) {
-          Product productoActualizado = Product(
-            id: producto.id,
-            nombre: producto.nombre,
-            descripcion: producto.descripcion,
-            precio: producto.precio,
-            cantidad: producto.cantidad - cantidad,
-            imagenProducto: producto.imagenProducto,
-          );
-          await _productRepository.modificarProducto(
-              producto.id!.toString(), productoActualizado);
-        }
-      }
-
-      // Recargar productos y limpiar cantidades
-      await _cargarProductos();
-      setState(() => cantidades.clear());
-
+      // 2. Cerramos el spinner de carga para evitar bloqueos de UI
       if (mounted) {
         Navigator.of(context).pop(); // Cerrar el spinner
+      }
+
+      // 3. Mostramos un mensaje de éxito inmediato
+      if (mounted) {
         SnaksBar.showSnackBar(
             context, "Pedido #$numeroPedido realizado con éxito",
             color: Constants.successColor);
       }
+
+      // 4. Actualizamos el stock en segundo plano
+      for (var producto in productos) {
+        if (producto.id == null) continue;
+        int cantidad = cantidades[producto.id!] ?? 0;
+        if (cantidad > 0) {
+          try {
+            Product productoActualizado = Product(
+              id: producto.id,
+              nombre: producto.nombre,
+              descripcion: producto.descripcion,
+              precio: producto.precio,
+              cantidad: producto.cantidad - cantidad,
+              imagenProducto: producto.imagenProducto,
+            );
+            await _productRepository.modificarProducto(
+                producto.id!.toString(), productoActualizado);
+          } catch (e) {
+            logger.e("Error al actualizar stock del producto ${producto.id}: $e");
+            // Continuamos con los demás productos aunque falle uno
+          }
+        }
+      }
+
+      // 5. Finalmente recargamos los productos y limpiamos cantidades
+      if (mounted) {
+        await _cargarProductos();
+        setState(() => cantidades.clear());
+      }
     } catch (e) {
       logger.e("Error al realizar la compra: $e");
       if (mounted) {
+        // Asegurarse de cerrar el spinner si hay un error
+        Navigator.of(context).pop(); // Cerrar el spinner
         SnaksBar.showSnackBar(context, "Error al realizar la compra: $e",
             color: Constants.errorColor);
       }

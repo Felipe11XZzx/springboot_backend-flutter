@@ -212,7 +212,7 @@ class _AdministerManagementPageState extends State<AdministerManagementPage> {
         TextEditingController(text: user.edad.toString());
     String selectedTreatment = user.trato ?? "Sr.";
     String? imagePath = user.imagen;
-    bool isAdmin = user.administrador ?? false;
+    bool isAdmin = user.administrador == true;
 
     showDialog(
       context: context,

@@ -73,6 +73,8 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
       );
 
       await _cargarPedidos();
+
+      // Solo mostrar el SnackBar si el widget sigue montado
       if (mounted) {
         SnaksBar.showSnackBar(
           context,
@@ -82,6 +84,8 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
       }
     } catch (e) {
       logger.e("Error al actualizar estado: $e");
+
+      // Solo mostrar el SnackBar si el widget sigue montado
       if (mounted) {
         SnaksBar.showSnackBar(
           context,
@@ -89,6 +93,9 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
           color: Constants.errorColor,
         );
       }
+
+      // Re-lanzar la excepción para que _confirmAndChangeEstado pueda manejarla
+      throw e;
     }
   }
 
@@ -105,8 +112,21 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
 
     if (confirmado != true) return;
 
-    await Dialogs.showLoadingSpinner(context);
-    await _actualizarEstadoPedido(pedido, nuevoEstado);
+    try {
+      await Dialogs.showLoadingSpinner(context);
+      await _actualizarEstadoPedido(pedido, nuevoEstado);
+
+      // Cerrar el diálogo de carga
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      // Cerrar el diálogo de carga en caso de error
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+      logger.e("Error al cambiar estado: $e");
+    }
   }
 
   @override
